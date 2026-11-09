@@ -34,7 +34,6 @@ def error(code, message, status):
 def get_db():
     if "db" not in g:
         g.db = database.connect(DATABASE_URL)
-        database.init_schema(g.db)
     return g.db
 
 
@@ -83,7 +82,7 @@ def habit_json(row):
         "id": row["id"], "name": row["name"], "group_id": row["group_id"],
         "frequency": row["frequency"], "weekdays_mask": row["weekdays_mask"],
         "target_count_per_day": row["target_count_per_day"],
-        "archived": bool(row["archived"]), "created_at": row["created_at"],
+        "archived": bool(row["archived"]), "created_at": str(row["created_at"]),
     }
 
 
@@ -113,7 +112,9 @@ def read_day(value):
 @app.get("/health")
 def health():
     try:
-        get_db().execute("SELECT 1")
+        conn = database.connect(DATABASE_URL, retries=1)   # fail fast, don't keep retrying
+        conn.execute("SELECT 1 AS ok")
+        conn.close()
         return jsonify({"status": "ok", "db": "ok", "version": VERSION})
     except Exception:
         return jsonify({"status": "error", "db": "error", "version": VERSION}), 503
@@ -218,12 +219,12 @@ def habits_update(habit_id):
             name = (data["name"] or "").strip()
             if not name:
                 raise ValueError("name cannot be empty")
-            db.execute("UPDATE habits SET name = ? WHERE id = ?", (name, habit_id))
+            db.execute("UPDATE habits SET name = %s WHERE id = %s", (name, habit_id))
             db.commit()
         if "group_id" in data:
             set_habit_group(db, g.user_id, habit_id, data["group_id"])
         if "archived" in data:
-            db.execute("UPDATE habits SET archived = ? WHERE id = ?",
+            db.execute("UPDATE habits SET archived = %s WHERE id = %s",
                        (1 if data["archived"] else 0, habit_id))
             db.commit()
     except ValueError as e:
@@ -274,7 +275,7 @@ def history():
             return error("not_found", "Habit not found.", 404)
         habits = [habit]
     else:
-        habits = db.execute("SELECT * FROM habits WHERE user_id = ? ORDER BY id",
+        habits = db.execute("SELECT * FROM habits WHERE user_id = %s ORDER BY id",
                             (g.user_id,)).fetchall()
 
     result = []
@@ -290,10 +291,13 @@ def history():
             "habit_id": h["id"], "name": h["name"], "frequency": h["frequency"],
             "weekdays_mask": h["weekdays_mask"],
             "target_count_per_day": h["target_count_per_day"],
-            "created_at": h["created_at"], "checkins": checkins,
+            "created_at": str(h["created_at"]), "checkins": checkins,
         })
     return jsonify({"habits": result})
 
 
 if __name__ == "__main__":
+    startup_db = database.connect(DATABASE_URL)
+    database.migrate(startup_db)          # applies any migration that has not run yet
+    startup_db.close()
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8001)))

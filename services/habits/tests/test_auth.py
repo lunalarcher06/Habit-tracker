@@ -1,15 +1,10 @@
 import pytest
-from db import connect, init_schema
 from auth import register_user, authenticate_user, get_user_by_id
 
 
 @pytest.fixture
-def db():
-    #In-memory database 
-    conn = connect(":memory:")
-    init_schema(conn)
-    yield conn
-    conn.close()
+def db(clean_db):
+    return clean_db
 
 
 class TestRegister:

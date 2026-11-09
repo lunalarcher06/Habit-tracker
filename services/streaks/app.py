@@ -40,7 +40,6 @@ def error(code, message, status):
 def get_db():
     if "db" not in g:
         g.db = database.connect(DATABASE_URL)
-        database.init_schema(g.db)
     return g.db
 
 
@@ -110,7 +109,9 @@ def habit_missing(_):
 @app.get("/health")
 def health():
     try:
-        get_db().execute("SELECT 1")
+        conn = database.connect(DATABASE_URL, retries=1)   # fail fast, don't keep retrying
+        conn.execute("SELECT 1 AS ok")
+        conn.close()
         return jsonify({"status": "ok", "db": "ok", "version": VERSION})
     except Exception:
         return jsonify({"status": "error", "db": "error", "version": VERSION}), 503
@@ -153,10 +154,13 @@ def milestones():
     rows = milestones_for_user(get_db(), g.user_id)
     return jsonify({"milestones": [
         {"habit_id": r["habit_id"], "streak_length": r["streak_length"],
-         "item_unlocked": r["item_unlocked"], "achieved_on": r["achieved_on"]}
+         "item_unlocked": r["item_unlocked"], "achieved_on": str(r["achieved_on"])}
         for r in rows if habit_id is None or r["habit_id"] == habit_id
     ]})
 
 
 if __name__ == "__main__":
+    startup_db = database.connect(DATABASE_URL)
+    database.migrate(startup_db)          # applies any migration that has not run yet
+    startup_db.close()
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 8002)))

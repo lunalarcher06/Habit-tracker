@@ -160,14 +160,14 @@ def check_and_award_milestones(db, user_id, habit_id, streak, as_of=None):
             break  # sorted ascending, no point checking further
 
         already = db.execute(
-            "SELECT 1 FROM milestones WHERE habit_id = ? AND streak_length = ?",
+            "SELECT 1 AS found FROM milestones WHERE habit_id = %s AND streak_length = %s",
             (habit_id, threshold),
         ).fetchone()
 
         if not already:
             db.execute(
                 """INSERT INTO milestones (user_id, habit_id, streak_length, achieved_on)
-                   VALUES (?, ?, ?, ?)""",
+                   VALUES (%s, %s, %s, %s)""",
                 (user_id, habit_id, threshold, as_of.isoformat()),
             )
             awarded.append(threshold)
@@ -180,7 +180,7 @@ def check_and_award_milestones(db, user_id, habit_id, streak, as_of=None):
 def milestones_for_habit(db, habit_id):
     """All milestones earned for one habit, oldest first."""
     return db.execute(
-        "SELECT * FROM milestones WHERE habit_id = ? ORDER BY achieved_on",
+        "SELECT * FROM milestones WHERE habit_id = %s ORDER BY achieved_on",
         (habit_id,),
     ).fetchall()
 
@@ -188,6 +188,6 @@ def milestones_for_habit(db, habit_id):
 def milestones_for_user(db, user_id):
     """All milestones across all of a user's habits, newest first."""
     return db.execute(
-        "SELECT * FROM milestones WHERE user_id = ? ORDER BY achieved_on DESC",
+        "SELECT * FROM milestones WHERE user_id = %s ORDER BY achieved_on DESC",
         (user_id,),
     ).fetchall()

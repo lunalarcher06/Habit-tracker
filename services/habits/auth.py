@@ -22,14 +22,14 @@ def register_user(db, first_name, last_name, username, password):
         raise ValueError("password must be at least 8 characters")
 
     existing = db.execute(
-        "SELECT 1 FROM users WHERE username = ?", (username,)
+        "SELECT 1 AS found FROM users WHERE username = %s", (username,)
     ).fetchone()
     if existing:
         raise ValueError("username already taken")
     hashed = generate_password_hash(password, method="pbkdf2:sha256")
     cur = db.execute(
         """INSERT INTO users (first_name, last_name, username, password_hash)
-           VALUES (?, ?, ?, ?)""",
+           VALUES (%s, %s, %s, %s)""",
         (first_name, last_name, username, hashed),
     )
     db.commit()
@@ -38,7 +38,7 @@ def register_user(db, first_name, last_name, username, password):
 def authenticate_user(db, username, password):
     username = (username or "").strip()   
     user = db.execute(
-        "SELECT * FROM users WHERE username = ?", (username,)
+        "SELECT * FROM users WHERE username = %s", (username,)
     ).fetchone()
     if user is None:
         return None
@@ -48,5 +48,5 @@ def authenticate_user(db, username, password):
 
 def get_user_by_id(db, user_id):
     return db.execute(
-        "SELECT * FROM users WHERE id = ?", (user_id,)
+        "SELECT * FROM users WHERE id = %s", (user_id,)
     ).fetchone()

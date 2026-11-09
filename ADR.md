@@ -30,7 +30,7 @@ Consequences: If I ever split this into microservices, `checkins_by_date()` woul
 
 ## 3. Data Model: Count-Based Check-ins and Per-Habit Milestones
 Date: 2026-10-01  
-Status: Decided
+Status: Superseded by [7]
 
 Context: Some habits need more than one check per day, like "drink 8 glasses of water." I also needed streaks and milestone badges.
 
@@ -84,3 +84,18 @@ Status: Decided
 - **Making accounts a separate service:** that would add another container I do not need. Make this assignment more complex.
 
 **Consequences:** The split matches the way I already built the monolith, so it was easy to carry over. It does add a bit more setup, because the services now need HTTP calls, JWTs, and separate databases. But the streak logic stayed the same, which made the change simpler.
+
+## 7. Milestones Keep Their Own user_id and Have No Foreign Key to Habits
+Date: 2026-11-09  
+Status: Decided
+
+Context: After the split in ADR 6, the Habits service and the Streaks service now live in separate databases. Streaks can no longer join the habits table, but it still needs to show milestones for one user.
+
+Decision: I changed the milestones table in Streaks so it stores both user_id and habit_id as plain integers. The table still uses UNIQUE(habit_id, streak_length) so the same milestone cannot be earned twice for one habit. GET /milestones now filters by user_id using only the Streaks database.
+
+**Alternatives considered:**
+-**Asking Habits for the user’s habits every time /milestones is called:** this would make the endpoint depend on Habits being up.
+
+-**Keeping a copy of the habits table in Streaks:** this would let me join across the data again, but the copy could go out of sync.
+
+**Consequences:** This makes Streaks a bit less strict than the monolith, because user_id is now repeated data. But it means /milestones still works without calling Habits, which fits the split better. Deleting a user in Habits would leave their milestones behind, but that is fine for now because the app does not have delete-account support.

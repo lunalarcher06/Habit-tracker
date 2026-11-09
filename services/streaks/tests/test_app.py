@@ -7,11 +7,12 @@ import pytest
 import requests
 
 import app as streaks_app
+from conftest import TEST_URL
 
 
 @pytest.fixture
-def client(tmp_path, monkeypatch):
-    monkeypatch.setattr(streaks_app, "DATABASE_URL", str(tmp_path / "test.db"))
+def client(db, monkeypatch):
+    monkeypatch.setattr(streaks_app, "DATABASE_URL", TEST_URL)
     return streaks_app.app.test_client()
 
 
@@ -115,3 +116,10 @@ def test_cors_preflight(client):
     r = client.options("/streaks")
     assert r.status_code == 200   # Flask answers OPTIONS itself
     assert r.headers["Access-Control-Allow-Origin"] == streaks_app.UI_ORIGIN
+
+
+def test_health_is_503_when_the_database_is_unreachable(client, monkeypatch):
+    monkeypatch.setattr(streaks_app, "DATABASE_URL", "mssql://nobody:wrong@localhost:1/none")
+    r = client.get("/health")
+    assert r.status_code == 503
+    assert r.get_json() == {"status": "error", "db": "error", "version": "dev"}

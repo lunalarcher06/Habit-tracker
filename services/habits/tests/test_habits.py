@@ -1,7 +1,6 @@
 #Test domain A
 
 import pytest
-from db import connect, init_schema
 from service import (
     create_group, list_groups, get_owned_group, delete_group,
     set_habit_group, create_habit, archive_habit, list_habits,
@@ -9,21 +8,6 @@ from service import (
 )
 
 
-@pytest.fixture
-def db():
-    conn = connect(":memory:")
-    init_schema(conn)
-    conn.execute(
-        "INSERT INTO users (id, first_name, last_name, username, password_hash) "
-        "VALUES (1, 'Luna', 'Larcher', 'luna', 'x')"
-    )
-    conn.execute(
-        "INSERT INTO users (id, first_name, last_name, username, password_hash) "
-        "VALUES (2, 'Other', 'User', 'other', 'x')"
-    )
-    conn.commit()
-    yield conn
-    conn.close()
 #Groups
 class TestGroups:
     def test_create_and_list(self, db):
