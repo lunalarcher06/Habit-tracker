@@ -125,7 +125,6 @@ def log_checkin(db, user_id, habit_id, day=None):
 
 
 def undo_checkin(db, user_id, habit_id, day=None):
-    """Takes 1 off the day's count (never below 0) and returns the new count."""
     if get_owned_habit(db, user_id, habit_id) is None:
         raise ValueError("habit not found for this user")
     day = day or date.today().isoformat()
@@ -136,9 +135,8 @@ def undo_checkin(db, user_id, habit_id, day=None):
     db.commit()
     return _count_on(db, habit_id, day)
 
-
+#The check in dictionary 
 def checkins_by_date(db, habit_id):
-    """{date_string: count} for one habit, the shape the streaks domain uses."""
     rows = db.execute(
         "SELECT date, count FROM checkins WHERE habit_id = ?", (habit_id,)
     ).fetchall()

@@ -1,4 +1,4 @@
-"""Tests for Domain A — Habits & Check-ins."""
+#Test domain A
 
 import pytest
 from db import connect, init_schema
@@ -11,7 +11,6 @@ from service import (
 
 @pytest.fixture
 def db():
-    """In-memory database with schema loaded and a test user inserted."""
     conn = connect(":memory:")
     init_schema(conn)
     conn.execute(
@@ -25,10 +24,7 @@ def db():
     conn.commit()
     yield conn
     conn.close()
-
-
-# ── Groups ──────────────────────────────────────────────
-
+#Groups
 class TestGroups:
     def test_create_and_list(self, db):
         gid = create_group(db, 1, "Morning")
@@ -55,10 +51,7 @@ class TestGroups:
     def test_get_owned_group_wrong_user(self, db):
         gid = create_group(db, 1, "Mine")
         assert get_owned_group(db, 2, gid) is None
-
-
-# ── Habits ──────────────────────────────────────────────
-
+#Habits
 class TestHabits:
     def test_create_and_list(self, db):
         hid = create_habit(db, 1, "Drink water")
@@ -125,10 +118,7 @@ class TestHabits:
         hid = create_habit(db, 1, "H")
         with pytest.raises(ValueError):
             set_habit_group(db, 1, hid, 999)
-
-
-# ── Check-ins ───────────────────────────────────────────
-
+#Checkins
 class TestCheckins:
     def test_log_creates_row(self, db):
         hid = create_habit(db, 1, "Read")

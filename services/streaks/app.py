@@ -1,5 +1,6 @@
 """Streaks service: streak maths and milestones. Asks Habits for the check-ins.
 Contract: openapi.yaml. Configuration comes from environment variables."""
+import logging
 import os
 import time
 from functools import wraps
@@ -15,6 +16,7 @@ from service import (
 )
 
 app = Flask(__name__)
+logging.getLogger("werkzeug").setLevel(logging.ERROR)  
 JWT_SECRET = os.environ.get("JWT_SECRET", "dev-secret-change-in-production")  
 DATABASE_URL = os.environ.get("DATABASE_URL", "streaks.db")  
 HABITS_URL = os.environ.get("HABITS_URL", "http://localhost:8001")
@@ -77,11 +79,6 @@ def log_and_cors(response):
     response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type"
     response.headers["Access-Control-Allow-Methods"] = "GET, OPTIONS"
     return response
-
-
-@app.route("/<path:_path>", methods=["OPTIONS"])
-def preflight(_path):
-    return "", 204
 
 
 #Gets from habits service, the checkin history

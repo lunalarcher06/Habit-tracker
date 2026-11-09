@@ -1,8 +1,4 @@
-"""Tests for Domain B — Streaks & Insights.
-
-The streak functions take a {date: count} dict, so most tests build one by
-hand — no database needed. Only the milestone tests use `db`.
-"""
+#Test domain B
 
 import pytest
 from datetime import date, timedelta
@@ -15,14 +11,10 @@ MON_WED_FRI = 21  # weekdays_mask: Mon=1 + Wed=4 + Fri=16
 
 
 def _n_days(n, end_date, count=1):
-    """{date: count} for n consecutive days ending on end_date."""
     return {(end_date - timedelta(days=i)).isoformat(): count for i in range(n)}
 
 
-
-
-# ── Current streak ──────────────────────────────────────
-
+#Current streak
 class TestCurrentStreak:
     def test_no_checkins(self):
         assert current_streak({}, as_of=date(2026, 10, 6)) == 0
@@ -59,8 +51,7 @@ class TestCurrentStreak:
         assert current_streak(checkins, 1, "custom", MON_WED_FRI, as_of=date(2026, 10, 9)) == 3
 
 
-# ── Longest streak ──────────────────────────────────────
-
+#The longest streak
 class TestLongestStreak:
     def test_no_checkins(self):
         assert longest_streak({}) == 0
@@ -79,8 +70,6 @@ class TestLongestStreak:
         checkins = {"2026-10-05": 1, "2026-10-07": 1}  # Mon, Wed
         assert longest_streak(checkins, 1, "custom", MON_WED_FRI) == 2
 
-
-# ── Completion rate ─────────────────────────────────────
 
 class TestCompletionRate:
     def test_empty(self):
@@ -115,9 +104,7 @@ class TestCompletionRate:
                                as_of=date(2026, 10, 7))
         assert rate == pytest.approx(1.0)
 
-
-# ── Milestones ──────────────────────────────────────────
-
+#Insights
 class TestMilestones:
     def test_7_day_milestone(self, db):
         hid = 1
@@ -152,8 +139,6 @@ class TestMilestones:
         hid = 1
         assert check_and_award_milestones(db, 1, hid, streak=5, as_of=date(2026, 10, 6)) == []
 
-
-# ── This week grid ──────────────────────────────────────
 
 class TestWeekStates:
     # 2026-10-07 is a Wednesday, so the week is Mon 5 Oct .. Sun 11 Oct

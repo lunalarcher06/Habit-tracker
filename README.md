@@ -89,7 +89,7 @@ cd services/habits && python -m pytest tests -v
 cd services/streaks && python -m pytest tests -v
 ```
 
-Habits has 41 tests and Streaks has 29. The tests call the service functions directly, so the routes in `app.py` are not covered yet.
+Habits has 57 tests and Streaks has 41. The service tests call the functions directly. The route tests use Flask's test client with a temporary database, and the Streaks route tests replace the call to Habits with a fake, including the case where Habits is down. Coverage is about 98% for Habits and 99% for Streaks.
 
 ## Still to do
 
