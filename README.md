@@ -107,6 +107,14 @@ TEST_DATABASE_URL="mssql://streaks_user:<password>@localhost:1433/streaks_test" 
 
 Habits has 59 tests and Streaks has 42. Each test starts from empty tables. The service tests call the functions directly. The route tests use Flask's test client, and the Streaks route tests replace the call to Habits with a fake, including the case where Habits is down.
 
+## CI and images
+
+`.github/workflows/ci.yml` runs on every push and pull request:
+- **`test`** (one job per service): installs the service, lints it with `ruff`, validates its `openapi.yaml`, starts a throwaway SQL Server container with random masked passwords, and runs the tests. The job fails if coverage is below 70%.
+- **`images`** (after `test` passes): builds each service's Docker image. Only on `main` it also pushes the image to `ghcr.io/<owner>/habit-buddy-<service>:<commit sha>`, using the built-in `GITHUB_TOKEN`.
+
+To run a published image: `docker run --rm ghcr.io/<owner>/habit-buddy-habits:<sha>`. It starts and then fails to connect to a database, because there is no `DATABASE_URL`.
+
 ## Still to do
 
-I still need to build the static UI, add CI with the 70% coverage gate, deploy to Azure, write the second migration with before/after evidence, add an integration test across the seam, and write ADRs 8–10.
+I still need to build the static UI, validate `system.yaml`, deploy to Azure, write the second migration with before/after evidence, add an integration test across the seam, and write ADRs 8–10.

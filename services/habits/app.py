@@ -13,7 +13,7 @@ import db as database
 from auth import register_user, authenticate_user, get_user_by_id
 from service import (
     create_group, list_groups, get_owned_group, delete_group, set_habit_group,
-    create_habit, archive_habit, list_habits, get_owned_habit,
+    create_habit, list_habits, get_owned_habit,
     log_checkin, undo_checkin, checkins_by_date,
 )
 
