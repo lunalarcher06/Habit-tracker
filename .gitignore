@@ -9,3 +9,4 @@ data/
 .coverage
 .pytest_cache/
 .DS_Store
+.ruff_cache/
