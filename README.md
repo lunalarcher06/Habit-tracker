@@ -54,9 +54,10 @@ DATABASE_URL="mssql://habits_user:<password>@localhost:1433/habits" JWT_SECRET=<
 | Variable | Default | Used by | Description |
 |---|---|---|---|
 | `PORT` | `8001` / `8002` | both | Port the service listens on |
-| `DATABASE_URL` | local SQL Server | both | `mssql://user:password@host:1433/database` |
-| `JWT_SECRET` | `dev-secret-change-in-production` | both | Must be the same in both services |
+| `DATABASE_URL` | none (required) | both | `mssql://user:password@host:1433/database` |
+| `JWT_SECRET` | none (required) | both | Must be the same in both services |
 | `HABITS_URL` | `http://localhost:8001` | Streaks | Where to find Habits |
+| `HABITS_TIMEOUT_S` | `3` | Streaks | Timeout in seconds for calls to Habits |
 | `UI_ORIGIN` | `http://localhost:8080` | both | The only origin allowed by CORS |
 | `GIT_SHA` | `dev` | both | Reported as `version` by `/health` |
 
@@ -68,6 +69,7 @@ DATABASE_URL="mssql://habits_user:<password>@localhost:1433/habits" JWT_SECRET=<
 habit-tracker/
 ├── docker-compose.yml        # SQL Server, db-init, habits, streaks, ui
 ├── .env.example              # the variables compose needs (copy to .env)
+├── system.yaml               # every service, its settings, its calls and its Azure resources
 ├── db/
 │   ├── init.sql              # databases and logins (idempotent)
 │   └── init_test.sql         # extra databases for the test suites
@@ -117,4 +119,4 @@ To run a published image: `docker run --rm ghcr.io/<owner>/habit-buddy-habits:<s
 
 ## Still to do
 
-I still need to build the static UI, validate `system.yaml`, deploy to Azure, write the second migration with before/after evidence, add an integration test across the seam, and write ADRs 8–10.
+I still need to build the static UI, validate `system.yaml` against `system.schema.json` in CI, deploy to Azure, write the second migration with before/after evidence, add an integration test across the seam, and write ADRs 8–10.

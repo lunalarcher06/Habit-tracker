@@ -1,0 +1,55 @@
+# yaml-language-server: $schema=./system.schema.json
+student: lalarcher.ieu2024
+prefix: lalarcher-ieu2024
+public_url: https://REPLACE-AFTER-AZURE-SETUP.azurestaticapps.net
+ui:
+  path: ui
+  static_web_app: lalarcher-ieu2024-ui
+  calls: [habits, streaks]
+azure:
+  resource_group: rg-sdd-3a
+  container_apps_environment: lalarcher-ieu2024-env
+  sql_server: lalarcher-ieu2024-sql
+  registry: ghcr.io/lunalarcher06
+services:
+  habits:
+    description: Users, habit groups, habits and check-ins. Issues the login token (JWT).
+    path: services/habits
+    openapi: services/habits/openapi.yaml
+    port_default: 8001
+    health: /health
+    migrations: services/habits/migrations
+    env:
+      PORT: { default: 8001, description: Port the service listens on }
+      DATABASE_URL: { secret: true, description: Connection string of the habits database }
+      JWT_SECRET: { secret: true, description: Key that signs the login tokens; the same value as in streaks }
+      UI_ORIGIN: { default: "http://localhost:8080", description: The only origin allowed by CORS }
+      GIT_SHA: { default: dev, description: Commit the image was built from, shown as version by /health }
+    calls: []
+    azure:
+      container_app: lalarcher-ieu2024-habits
+      sql_database: lalarcher-ieu2024-habits-db
+  streaks:
+    description: Streaks and milestones, worked out from the check-ins that Habits returns.
+    path: services/streaks
+    openapi: services/streaks/openapi.yaml
+    port_default: 8002
+    health: /health
+    migrations: services/streaks/migrations
+    env:
+      PORT: { default: 8002, description: Port the service listens on }
+      DATABASE_URL: { secret: true, description: Connection string of the streaks database }
+      JWT_SECRET: { secret: true, description: Key that checks the login tokens; the same value as in habits }
+      HABITS_URL: { default: "http://localhost:8001", description: Base URL of the habits service }
+      HABITS_TIMEOUT_S: { default: 3, description: Timeout in seconds for calls to habits }
+      UI_ORIGIN: { default: "http://localhost:8080", description: The only origin allowed by CORS }
+      GIT_SHA: { default: dev, description: Commit the image was built from, shown as version by /health }
+    calls:
+      - service: habits
+        url_env: HABITS_URL
+        endpoints: ["GET /history"]
+        timeout_s: 3
+        on_failure: Streaks answers 503 habits_unavailable. Milestones and health still work, because they only use the streaks database.
+    azure:
+      container_app: lalarcher-ieu2024-streaks
+      sql_database: lalarcher-ieu2024-streaks-db

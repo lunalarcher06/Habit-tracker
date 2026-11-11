@@ -17,14 +17,12 @@ from service import (
 
 app = Flask(__name__)
 logging.getLogger("werkzeug").setLevel(logging.ERROR)  
-JWT_SECRET = os.environ.get("JWT_SECRET", "dev-secret-change-in-production")  
-DATABASE_URL = os.environ.get("DATABASE_URL", "streaks.db")  
+JWT_SECRET = os.environ.get("JWT_SECRET")   # secret, no default; same value in both services
+DATABASE_URL = os.environ.get("DATABASE_URL")   # secret, no default: mssql://user:password@host:1433/database
 HABITS_URL = os.environ.get("HABITS_URL", "http://localhost:8001")
 UI_ORIGIN = os.environ.get("UI_ORIGIN", "http://localhost:8080")
 VERSION = os.environ.get("GIT_SHA", "dev")
-HABITS_TIMEOUT = 3  
-
-
+HABITS_TIMEOUT = float(os.environ.get("HABITS_TIMEOUT_S", "3"))   # seconds
 class HabitsUnavailable(Exception):
     pass
 
@@ -160,6 +158,8 @@ def milestones():
 
 
 if __name__ == "__main__":
+    if not DATABASE_URL or not JWT_SECRET:
+        raise SystemExit("DATABASE_URL and JWT_SECRET must be set")
     startup_db = database.connect(DATABASE_URL)
     database.migrate(startup_db)          # applies any migration that has not run yet
     startup_db.close()

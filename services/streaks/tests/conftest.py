@@ -7,6 +7,7 @@ import pytest
 import db as database
 
 TEST_URL = os.environ.get("TEST_DATABASE_URL", "")
+os.environ.setdefault("JWT_SECRET", "test-only-secret")   # app.py reads it when it is imported
 
 
 @pytest.fixture
