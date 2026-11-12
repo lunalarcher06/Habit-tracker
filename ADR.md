@@ -1,7 +1,7 @@
-# Architecture Decision Records
 
+# Architecture Decision Record 
 ## 1. Backend Language & Framework Choice
-Date: 2026-09-30  
+Date: 2026-09-30
 Status: Decided
 
 Context: I needed a simple web app that could show pages, save data in SQLite, and run in one process. The app has two main jobs: managing habits/check-ins and calculating streaks.
@@ -15,7 +15,7 @@ Alternatives considered:
 Consequences: I have to write the SQL myself and set up things like foreign keys and `row_factory` manually. The advantage is that the app stays small and easy to explain.
 
 ## 2. Keeping the Two Domains Separate
-Date: 2026-10-01  
+Date: 2026-10-01
 Status: Decided
 
 Context: The app has two parts: **Habits & Check-ins** and **Streaks & Insights**. I wanted them to stay loosely connected so they could be split into separate services later.
@@ -29,7 +29,7 @@ Alternatives considered:
 Consequences: If I ever split this into microservices, `checkins_by_date()` would just become an API call. The one remaining link is `milestones_for_user`, which joins `milestones` with `habits` to find a user's habits, so that query would need to change too. The downside is a little more setup now, but the code is cleaner and easier to test.
 
 ## 3. Data Model: Count-Based Check-ins and Per-Habit Milestones
-Date: 2026-10-01  
+Date: 2026-10-01
 Status: Superseded by [7]
 
 Context: Some habits need more than one check per day, like "drink 8 glasses of water." I also needed streaks and milestone badges.
@@ -43,8 +43,8 @@ Alternatives considered:
 Consequences: `log_checkin` uses `ON CONFLICT ... DO UPDATE SET count = count + 1`, so there are no duplicate rows for the same habit and day. The streak code can work from the check-in counts alone.
 
 ## 4. Testing Approach
-Date: 2026-10-10  
-Status: Decided
+Date: 2026-10-10
+Status: Superseded by [9]
 
 Context: I needed at least 70% coverage on the main logic using `pytest-cov`. I had to decide what to test properly and what to keep simple.
 
@@ -57,7 +57,7 @@ Alternatives considered:
 Consequences: The service files have 100% coverage, which is where the graded logic lives. The routes and templates are checked manually in the browser.
 
 ## 5. Not Building the Desktop Companion App
-Date: 2026-10-11  
+Date: 2026-10-11
 Status: Decided
 
 Context: I wanted my cat Chabal to behave like a desktop pet that stays on top of other windows and sends reminders when a habit is still undone. That would need a separate always-running app.
@@ -71,7 +71,7 @@ Alternatives considered:
 Consequences: Everything stays in one Flask app, which fits the assignment better. The cat is just JavaScript and sprite images, and the streak logic could still be reused later if I ever build a desktop version.
 
 ## 6. The Split: Two Services Along the ADR-2 Seam
-Date: 2026-11-04  
+Date: 2026-11-04
 Status: Decided
 
 **Context:** For Assignment 2 I needed the app split into two services, one for habits and one for streaks. I already had that boundary in ADR 2, so I kept the same split instead of changing everything.
@@ -80,13 +80,13 @@ Status: Decided
 
 **Alternatives considered:**
 - **Letting the browser talk to both services:** this would put too much logic in the frontend.
-- **Keeping milestone awarding in Habits:** this would make the services depend on each other both ways. 
+- **Keeping milestone awarding in Habits:** this would make the services depend on each other both ways.
 - **Making accounts a separate service:** that would add another container I do not need. Make this assignment more complex.
 
 **Consequences:** The split matches the way I already built the monolith, so it was easy to carry over. It does add a bit more setup, because the services now need HTTP calls, JWTs, and separate databases. But the streak logic stayed the same, which made the change simpler.
 
 ## 7. Milestones Keep Their Own user_id and Have No Foreign Key to Habits
-Date: 2026-11-09  
+Date: 2026-11-09
 Status: Decided
 
 Context: After the split in ADR 6, the Habits service and the Streaks service now live in separate databases. Streaks can no longer join the habits table, but it still needs to show milestones for one user.
@@ -99,3 +99,33 @@ Decision: I changed the milestones table in Streaks so it stores both user_id an
 -**Keeping a copy of the habits table in Streaks:** this would let me join across the data again, but the copy could go out of sync.
 
 **Consequences:** This makes Streaks a bit less strict than the monolith, because user_id is now repeated data. But it means /milestones still works without calling Habits, which fits the split better. Deleting a user in Habits would leave their milestones behind, but that is fine for now because the app does not have delete-account support.
+
+## 8. Serverless Hosting on Azure
+Date: 2026-11-11
+Status: Decided
+
+Context: The assignment asks for a public system on Azure in a subscription whose budget is shared by the whole class, so nothing may have a fixed monthly cost. The system needs two services, one database per service, and a static UI.
+
+Decision: Each service runs as an Azure Container App on the Consumption plan with a minimum of 0 and a maximum of 1 replica, and has its own Azure SQL Database on the serverless tier (General Purpose, Gen5, 0.5 to 1 vCore, auto-pause) on one logical SQL server. The UI is an Azure Static Web App and the images come from GitHub Container Registry, so everything is pay-per-use.
+
+Alternatives considered:
+- **An App Service plan or virtual machines** — they have a fixed monthly cost even when nobody uses the app, and the class budget is shared.
+- **Azure Container Registry** — it has a monthly fee, and GHCR is free and already used by the pipeline.
+- **One database for both services** — it is cheaper, but it breaks the rule from ADR 6 that each service owns its own data.
+
+Consequences: Scale-to-zero means the first request after idle has to start the container and may find the database paused, which fails with error 40613 for up to about a minute, so `connect()` retries with backoff for about 60 seconds, and the cap of one replica means the migrations that run at startup can never run twice at the same time. At 100 times the traffic I would keep at least one replica running, allow more replicas and move the migrations to a one-off job so they still run once, and switch the databases to a provisioned tier with connection pooling.
+
+## 9. Pipeline and Testing
+Date: 2026-11-11
+Status: Decided
+
+Context: Assignment 2 needs a pipeline that stops a bad change before it is deployed. My tests from ADR 4 used in-memory SQLite, but the services now run on SQL Server, where the placeholders, the upsert and the date types all behave differently.
+
+Decision: On every push and pull request, CI lints each service, validates its OpenAPI file, runs its tests against a throwaway SQL Server container with a 70% coverage minimum, and runs one integration test that starts the real Habits and Streaks processes with their own databases and talks to them only over HTTP, and the images are built only after all of that passes and pushed to GHCR only from main, tagged with the commit SHA. The integration test checks that a token from Habits works in Streaks, that a streak and a milestone are worked out from data stored in Habits, that users only see their own data, and that Streaks answers 503 and keeps `/milestones` working when the Habits process is stopped.
+
+Alternatives considered:
+- **Keeping the SQLite tests** — they are faster, but they would pass on SQL that SQL Server rejects, such as the upsert, so they prove less.
+- **Replacing Habits with a stub in the integration test** — it is simpler, but it would not catch a mismatch between the stub and the real `/history`, or a token that Streaks refuses.
+- **Running the integration test against the full compose stack** — it covers the containers too, but it is slower and CI would have to build and start every image before the tests.
+
+Consequences: A change that breaks the seam, the migrations or a query fails CI before any image exists, at the cost of about a minute and a half per run and a SQL Server container in CI. What I deliberately do not test is the UI, the real network between containers, Azure SQL (CI never touches it, because every connection wakes it and is billed), race conditions between concurrent check-ins, and behaviour under load.

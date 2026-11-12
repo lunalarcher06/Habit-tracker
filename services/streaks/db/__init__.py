@@ -26,10 +26,10 @@ class Database:
         self.conn.close()
 
 
-def connect(url, retries=5):
+def connect(url, retries=8):
     """url looks like mssql://user:password@host:1433/database.
     Retries with a growing wait, because the server may still be starting
-    (or, on Azure, waking up from pause with error 40613)."""
+    (or, on Azure, waking up from pause with error 40613, which can take about a minute)."""
     parts = urlparse(url)
     wait = 1
     for attempt in range(retries):
@@ -45,7 +45,7 @@ def connect(url, retries=5):
             if attempt == retries - 1:
                 raise
             time.sleep(wait)
-            wait *= 2
+            wait = min(wait * 2, 15)   # 1, 2, 4, 8, 15, 15, 15 seconds: about a minute in all
 
 
 def migrate(db):

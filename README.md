@@ -20,7 +20,7 @@ How they work together (see ADR 6 and 7):
 ## Run everything with Docker
 
 ```bash
-cp .env.example .env        # then put your own passwords and JWT_SECRET in .env
+cp .env.example .env        
 docker compose up --build
 ```
 
@@ -73,6 +73,7 @@ habit-tracker/
 ├── db/
 │   ├── init.sql              # databases and logins (idempotent)
 │   └── init_test.sql         # extra databases for the test suites
+├── tests/integration/        # the test across the seam (both services running)
 ├── services/
 │   ├── habits/
 │   │   ├── app.py            # Flask routes, token check, /health, /history
@@ -109,14 +110,27 @@ TEST_DATABASE_URL="mssql://streaks_user:<password>@localhost:1433/streaks_test" 
 
 Habits has 59 tests and Streaks has 42. Each test starts from empty tables. The service tests call the functions directly. The route tests use Flask's test client, and the Streaks route tests replace the call to Habits with a fake, including the case where Habits is down.
 
+### Integration test across the seam
+
+`tests/integration/test_seam.py` starts the real Habits and Streaks services as two separate processes, each with its own test database, and talks to them only over HTTP. It checks that a token issued by Habits is accepted by Streaks, that a streak and a 7-day milestone are worked out from data that lives in Habits, that one user cannot see another user's data, and that with Habits stopped Streaks answers `503` in under 5 seconds while `/milestones` and `/health` keep working. It needs both test databases, so run it from the repo root with:
+
+```bash
+HABITS_TEST_DATABASE_URL="mssql://habits_user:<password>@localhost:1433/habits_test" \
+STREAKS_TEST_DATABASE_URL="mssql://streaks_user:<password>@localhost:1433/streaks_test" \
+python -m pytest tests/integration -v
+```
+
+CI runs it as its own `integration` job, and the images are only built after it passes.
+
 ## CI and images
 
 `.github/workflows/ci.yml` runs on every push and pull request:
 - **`test`** (one job per service): installs the service, lints it with `ruff`, validates its `openapi.yaml`, starts a throwaway SQL Server container with random masked passwords, and runs the tests. The job fails if coverage is below 70%.
-- **`images`** (after `test` passes): builds each service's Docker image. Only on `main` it also pushes the image to `ghcr.io/<owner>/habit-buddy-<service>:<commit sha>`, using the built-in `GITHUB_TOKEN`.
+- **`integration`**: starts SQL Server and runs the integration test above.
+- **`images`** (after `test` and `integration` pass): builds each service's Docker image. Only on `main` it also pushes the image to `ghcr.io/<owner>/habit-buddy-<service>:<commit sha>`, using the built-in `GITHUB_TOKEN`.
 
 To run a published image: `docker run --rm ghcr.io/<owner>/habit-buddy-habits:<sha>`. It starts and then fails to connect to a database, because there is no `DATABASE_URL`.
 
 ## Still to do
 
-I still need to build the static UI, validate `system.yaml` against `system.schema.json` in CI, deploy to Azure, write the second migration with before/after evidence, add an integration test across the seam, and write ADRs 8–10.
+I still need to build the static UI, validate `system.yaml` against `system.schema.json` in CI, deploy to Azure, write the second migration with before/after evidence, and write ADR 10.
