@@ -18,7 +18,12 @@ fetchall() -> returns all habits as a list
 """
 from datetime import date, timedelta
 
-MILESTONE_DAYS = (7, 14, 30, 60, 100, 365)
+# Every milestone unlocks one outfit for the cat. The UI has a picture for each name.
+OUTFITS = {
+    3: "headphones", 7: "cool", 14: "chef", 21: "bookworm", 30: "wizard", 45: "aviator",
+    60: "sheriff", 90: "astronaut", 100: "lucky", 150: "ninja", 200: "cyberpunk", 365: "royal",
+}
+MILESTONE_DAYS = tuple(sorted(OUTFITS))
 
 #Mon=0 … Sun=6  
 _WEEKDAY_BIT = {i: (1 << i) for i in range(7)}
@@ -166,9 +171,9 @@ def check_and_award_milestones(db, user_id, habit_id, streak, as_of=None):
 
         if not already:
             db.execute(
-                """INSERT INTO milestones (user_id, habit_id, streak_length, achieved_on)
-                   VALUES (%s, %s, %s, %s)""",
-                (user_id, habit_id, threshold, as_of.isoformat()),
+                """INSERT INTO milestones (user_id, habit_id, streak_length, item_unlocked, achieved_on)
+                   VALUES (%s, %s, %s, %s, %s)""",
+                (user_id, habit_id, threshold, OUTFITS[threshold], as_of.isoformat()),
             )
             awarded.append(threshold)
 
@@ -180,7 +185,7 @@ def check_and_award_milestones(db, user_id, habit_id, streak, as_of=None):
 def milestones_for_habit(db, habit_id):
     """All milestones earned for one habit, oldest first."""
     return db.execute(
-        "SELECT * FROM milestones WHERE habit_id = %s ORDER BY achieved_on",
+        "SELECT * FROM milestones WHERE habit_id = %s ORDER BY achieved_on, streak_length",
         (habit_id,),
     ).fetchall()
 
@@ -188,6 +193,6 @@ def milestones_for_habit(db, habit_id):
 def milestones_for_user(db, user_id):
     """All milestones across all of a user's habits, newest first."""
     return db.execute(
-        "SELECT * FROM milestones WHERE user_id = %s ORDER BY achieved_on DESC",
+        "SELECT * FROM milestones WHERE user_id = %s ORDER BY achieved_on DESC, streak_length DESC",
         (user_id,),
     ).fetchall()

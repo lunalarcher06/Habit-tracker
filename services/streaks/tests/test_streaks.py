@@ -119,25 +119,26 @@ class TestMilestones:
     def test_multiple_milestones_at_once(self, db):
         hid = 1
         awarded = check_and_award_milestones(db, 1, hid, streak=14, as_of=date(2026, 10, 6))
-        assert awarded == [7, 14]
+        assert awarded == [3, 7, 14]
 
     def test_milestones_for_habit(self, db):
         hid = 1
         check_and_award_milestones(db, 1, hid, streak=7, as_of=date(2026, 10, 6))
         ms = milestones_for_habit(db, hid)
-        assert len(ms) == 1
-        assert ms[0]["streak_length"] == 7
+        assert len(ms) == 2
+        assert [m["streak_length"] for m in ms] == [3, 7]
+        assert [m["item_unlocked"] for m in ms] == ["headphones", "cool"]
 
     def test_milestones_for_user(self, db):
         h1 = 1
         h2 = 2
         check_and_award_milestones(db, 1, h1, streak=7, as_of=date(2026, 10, 6))
         check_and_award_milestones(db, 1, h2, streak=14, as_of=date(2026, 10, 6))
-        assert len(milestones_for_user(db, 1)) == 3  # 7 for h1, 7+14 for h2
+        assert len(milestones_for_user(db, 1)) == 5  # 3+7 for h1, 3+7+14 for h2
 
     def test_streak_too_short_no_milestone(self, db):
         hid = 1
-        assert check_and_award_milestones(db, 1, hid, streak=5, as_of=date(2026, 10, 6)) == []
+        assert check_and_award_milestones(db, 1, hid, streak=2, as_of=date(2026, 10, 6)) == []
 
 
 class TestWeekStates:

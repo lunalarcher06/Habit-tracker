@@ -1,8 +1,8 @@
 # Habit Buddy
 
-Habit Buddy is a habit tracker for laptops. You can create habits, tick them off each day, and see your streaks, completion rates, and milestone badges at 7, 14, 30, 60, 100, and 365 days.
+Habit Buddy is a habit tracker for laptops. You can create habits, tick them off each day, and see your streaks, completion rates, and outfit rewards for your cat at 3, 7, 14, 21, 30, 45, 60, 90, 100, 150, 200 and 365 days.
 
-Assignment 2 splits the app into two Flask services that talk over HTTP, each with its own SQL Server database. **Work in progress:** the services, migrations, Dockerfiles and `docker compose` work locally; the static UI, CI, Azure deployment and the second migration are still to come.
+Assignment 2 splits the app into two Flask services that talk over HTTP, each with its own SQL Server database. **Work in progress:** the services, migrations, Dockerfiles and `docker compose` work locally; the static UI, CI and the second migration are done; the Azure deployment is still to come.
 
 ## Services
 
@@ -30,7 +30,7 @@ This starts SQL Server (`mcr.microsoft.com/mssql/server:2022-latest`), a one-off
 |---|---|
 | http://localhost:8001/health | Habits |
 | http://localhost:8002/health | Streaks |
-| http://localhost:8080 | UI (placeholder page for now) |
+| http://localhost:8080 | UI |
 
 `db-init` runs `db/init.sql`, which creates the `habits` and `streaks` databases and one login for each. Each login can only use its own database, and the script is safe to run again. On Apple Silicon, SQL Server runs through emulation, so enable Rosetta in Docker Desktop and give it a minute to start. The data lives in the `sqldata` volume, so `docker compose down` keeps it and `docker compose down -v` deletes it.
 
@@ -86,13 +86,13 @@ habit-tracker/
 │   │   ├── openapi.yaml
 │   │   └── requirements.txt
 │   └── streaks/              # same layout: app.py, service.py, db/, migrations/, tests/
-├── ui/                       # static UI (placeholder page for now)
+├── ui/                       # static UI: index.html, app.js, style.css, buddy-cat.js (the cat), cat/ (its pictures)
 ├── ADR.md                    # architecture decision records
 ├── AI_USAGE.md               # AI usage log
 └── README.md
 ```
 
-`app.py`, `templates/`, `static/`, `Dockerfile` and `requirements.txt` at the repo root are the Assignment 1 version of the app. They stay until the static `ui/` replaces them, and the root `app.py` no longer starts.
+The Assignment 1 version of the app (the root `app.py`, `templates/` and `static/`) was removed once the static `ui/` replaced it. It is still in the git history.
 
 ## Testing
 

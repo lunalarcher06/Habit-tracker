@@ -1,3 +1,62 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><title>Habit Buddy</title></head>
-<body><h1>Habit Buddy</h1><p>The UI is not built yet. I am focusing on code right now. The APIs are on ports 8001 and 8002.</p></body></html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#4d0e12">
+  <title>Habit Buddy</title>
+  <link rel="icon" href="cat/icon.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Flame gradient, used by every streak flame -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <defs>
+      <linearGradient id="flameColor" x1="0" y1="1" x2="0" y2="0">
+        <stop offset="0" stop-color="#e2452b"/>
+        <stop offset=".6" stop-color="#f08a24"/>
+        <stop offset="1" stop-color="#ffd166"/>
+      </linearGradient>
+    </defs>
+  </svg>
+
+  <a class="skip" href="#main" data-action="skip">Skip to content</a>
+
+  <!-- Shown after 3 seconds of waiting (cold start of the backend) -->
+  <div id="wake" class="wake" role="status" hidden>
+    <img src="cat/sleepy.png" alt="" width="48" height="28">
+    <span>Waking up the server… this can take up to a minute the first time.</span>
+  </div>
+
+  <header id="topbar" class="topbar" hidden>
+    <div class="topbar-inner">
+      <a class="brand" href="#/today">
+        <span class="brand-dot"><img src="cat/icon.png" alt=""></span>
+        <span>Habit Buddy</span>
+      </a>
+      <nav class="nav" aria-label="Main">
+        <a href="#/today" data-nav="today">Today</a>
+        <a href="#/milestones" data-nav="milestones">Milestones</a>
+      </nav>
+      <a class="btn btn-small" href="#/new" data-nav="new">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+        New habit
+      </a>
+      <button class="btn-link" type="button" data-action="logout">Log out</button>
+    </div>
+  </header>
+
+  <main id="main" tabindex="-1"></main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <dialog id="celebrate" class="celebrate" aria-labelledby="cel-title"></dialog>
+
+  <!-- config.js holds the service URLs and must load first (generated at deploy time) -->
+  <script src="config.js"></script>
+  <script src="buddy-cat.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

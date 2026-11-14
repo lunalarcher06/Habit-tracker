@@ -92,7 +92,8 @@ def group_json(row):
 
 def user_json(row):
     return {"id": row["id"], "first_name": row["first_name"],
-            "last_name": row["last_name"], "username": row["username"]}
+            "last_name": row["last_name"], "username": row["username"],
+            "outfit": row["outfit"]}
 
 
 def checkin_state(habit, day, count):
@@ -140,6 +141,32 @@ def login():
     claims = {"sub": str(user["id"]), "exp": int(time.time()) + TOKEN_SECONDS}
     token = jwt.encode(claims, JWT_SECRET, algorithm="HS256")
     return jsonify({"token": token, "expires_in": TOKEN_SECONDS, "user": user_json(user)})
+
+# The signed-in user. The only thing that can change is the cat's outfit.
+# Same names as the outfits Streaks hands out as milestone rewards.
+OUTFITS = {"none", "headphones", "cool", "chef", "bookworm", "wizard", "aviator",
+           "sheriff", "astronaut", "lucky", "ninja", "cyberpunk", "royal"}
+
+
+@app.get("/me")
+@token_required
+def me_get():
+    return jsonify(user_json(get_user_by_id(get_db(), g.user_id)))
+
+
+@app.patch("/me")
+@token_required
+def me_update():
+    data = body()
+    if set(data) != {"outfit"}:
+        return error("validation_error", "Only outfit can change.", 422)
+    if data["outfit"] not in OUTFITS:
+        return error("validation_error", "Unknown outfit.", 422)
+    db = get_db()
+    db.execute("UPDATE users SET outfit = %s WHERE id = %s", (data["outfit"], g.user_id))
+    db.commit()
+    return jsonify(user_json(get_user_by_id(db, g.user_id)))
+
 
 #Groups
 @app.get("/groups")

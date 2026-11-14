@@ -107,12 +107,12 @@ def test_milestone_is_stored_by_streaks_and_listed(stack):
     habit_id = new_habit_with_streak(stack, headers, days=7)
 
     first = requests.get(f"{stack['streaks']}/streaks", headers=headers).json()["streaks"][0]
-    assert first["new_milestones"] == [7]
+    assert first["new_milestones"] == [3, 7]
     again = requests.get(f"{stack['streaks']}/streaks", headers=headers).json()["streaks"][0]
     assert again["new_milestones"] == []          # awarded only once
 
     milestones = requests.get(f"{stack['streaks']}/milestones", headers=headers).json()["milestones"]
-    assert [(m["habit_id"], m["streak_length"]) for m in milestones] == [(habit_id, 7)]
+    assert sorted((m["habit_id"], m["streak_length"]) for m in milestones) == [(habit_id, 3), (habit_id, 7)]
 
 
 def test_users_only_see_their_own_data_across_the_seam(stack):
@@ -133,7 +133,7 @@ def test_streaks_rejects_a_missing_or_forged_token(stack):
 def test_when_habits_is_stopped_streaks_fails_clearly_and_keeps_its_own_data(stack):
     headers = new_user(stack)
     new_habit_with_streak(stack, headers, days=7)
-    requests.get(f"{stack['streaks']}/streaks", headers=headers)   # stores the 7-day milestone
+    requests.get(f"{stack['streaks']}/streaks", headers=headers)   # stores the 3 and 7 day milestones
 
     stack["habits_process"].terminate()
     stack["habits_process"].wait(timeout=10)
@@ -148,4 +148,4 @@ def test_when_habits_is_stopped_streaks_fails_clearly_and_keeps_its_own_data(sta
     assert requests.get(f"{stack['streaks']}/health").json()["status"] == "ok"
     milestones = requests.get(f"{stack['streaks']}/milestones", headers=headers)
     assert milestones.status_code == 200
-    assert [m["streak_length"] for m in milestones.json()["milestones"]] == [7]
+    assert sorted(m["streak_length"] for m in milestones.json()["milestones"]) == [3, 7]

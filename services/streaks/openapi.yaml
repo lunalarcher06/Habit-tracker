@@ -151,8 +151,8 @@ components:
       required: [habit_id, streak_length, achieved_on]
       properties:
         habit_id: { type: integer, description: Plain ID into the Habits service; no foreign key across the seam. }
-        streak_length: { type: integer, enum: [7, 14, 30, 60, 100, 365] }
-        item_unlocked: { type: string, nullable: true }
+        streak_length: { type: integer, enum: [3, 7, 14, 21, 30, 45, 60, 90, 100, 150, 200, 365] }
+        item_unlocked: { type: string, nullable: true, description: "The outfit this milestone unlocks, e.g. chef. Empty for milestones recorded before outfits existed." }
         achieved_on: { type: string, format: date }
 
     HabitStreak:

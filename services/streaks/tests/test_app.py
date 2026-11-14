@@ -54,11 +54,11 @@ def test_needs_a_token(client):
 
 
 def test_streaks_are_computed_and_token_is_forwarded(client, monkeypatch):
-    calls = fake_habits(monkeypatch, [history_entry(3)])
+    calls = fake_habits(monkeypatch, [history_entry(2)])
     headers = auth_header()
     streak = client.get("/streaks", headers=headers).get_json()["streaks"][0]
-    assert streak["current_streak"] == 3
-    assert streak["longest_streak"] == 3
+    assert streak["current_streak"] == 2
+    assert streak["longest_streak"] == 2
     assert streak["new_milestones"] == []
     assert calls[0]["headers"]["Authorization"] == headers["Authorization"]
     assert calls[0]["timeout"] == streaks_app.HABITS_TIMEOUT
@@ -68,11 +68,12 @@ def test_milestone_is_awarded_once_and_listed(client, monkeypatch):
     fake_habits(monkeypatch, [history_entry(7)])
     first = client.get("/streaks", headers=auth_header()).get_json()["streaks"][0]
     again = client.get("/streaks", headers=auth_header()).get_json()["streaks"][0]
-    assert first["new_milestones"] == [7]
+    assert first["new_milestones"] == [3, 7]
     assert again["new_milestones"] == []
 
     milestones = client.get("/milestones", headers=auth_header()).get_json()["milestones"]
-    assert [m["streak_length"] for m in milestones] == [7]
+    assert sorted(m["streak_length"] for m in milestones) == [3, 7]
+    assert {m["item_unlocked"] for m in milestones} == {"headphones", "cool"}
     assert client.get("/milestones?habit_id=99", headers=auth_header()).get_json() == {"milestones": []}
 
 

@@ -1,7 +1,0 @@
-Flask==3.0.3
-
-# Testing tools (python -m pytest --cov=...). Kept in this one file because the
-# deployment contract allows exactly one dependency manifest at the repo root.
-# Pinned to versions that install on Python 3.9 up to 3.13 (the image uses 3.12).
-pytest==8.3.5
-pytest-cov==6.0.0

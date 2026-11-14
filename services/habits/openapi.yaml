@@ -77,6 +77,37 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
+  /me:
+    get:
+      summary: The signed-in user, including the outfit the cat wears
+      responses:
+        "200":
+          description: The user.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+    patch:
+      summary: Change the outfit the cat wears (the only field that can change)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [outfit]
+              additionalProperties: false
+              properties:
+                outfit: { $ref: "#/components/schemas/Outfit" }
+      responses:
+        "200":
+          description: The updated user.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
   /groups:
     get:
       summary: List the caller's habit groups (tabs)
@@ -365,14 +396,20 @@ components:
         username: { type: string }
         password: { type: string }
 
+    Outfit:
+      type: string
+      description: Same names as the outfits Streaks hands out as milestone rewards. none = no outfit.
+      enum: [none, headphones, cool, chef, bookworm, wizard, aviator, sheriff, astronaut, lucky, ninja, cyberpunk, royal]
+
     User:
       type: object
-      required: [id, first_name, last_name, username]
+      required: [id, first_name, last_name, username, outfit]
       properties:
         id: { type: integer }
         first_name: { type: string }
         last_name: { type: string }
         username: { type: string }
+        outfit: { $ref: "#/components/schemas/Outfit" }
 
     LoginResponse:
       type: object
