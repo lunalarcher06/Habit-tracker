@@ -1,0 +1,81 @@
+# CD: every push to `main` runs the full CI first (`ci.yml`), and only if that passes
+# does it deploy the same commit.
+# Both Container Apps use the image that CI just built and tested, the UI is uploaded with the
+# service addresses, and `/health` has to return 200 on both services.
+# Azure sign-in uses OIDC with a managed identity (`infra/azure-setup.sh`), so no password is stored.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+      packages: write
+
+  deploy:
+    needs: ci
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      PREFIX: ${{ vars.PREFIX }}
+      RESOURCE_GROUP: ${{ vars.RESOURCE_GROUP }}
+      UI_STORAGE: ${{ vars.UI_STORAGE }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: echo "OWNER=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Run this commit's images
+        run: |
+          az extension add --name containerapp --upgrade --only-show-errors
+          for svc in habits streaks; do
+            az containerapp update --name "$PREFIX-$svc" --resource-group "$RESOURCE_GROUP" \
+              --image "ghcr.io/$OWNER/habit-buddy-$svc:$GITHUB_SHA" \
+              --set-env-vars GIT_SHA="$GITHUB_SHA" -o none
+          done
+
+      - name: Write ui/config.js with the service addresses
+        run: |
+          url() { echo "https://$(az containerapp show -n "$PREFIX-$1" -g "$RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)"; }
+          echo "HABITS_URL=$(url habits)" >> "$GITHUB_ENV"
+          echo "STREAKS_URL=$(url streaks)" >> "$GITHUB_ENV"
+          printf '// Written by the deploy job.\nwindow.CONFIG = {\n  HABITS_URL: "%s",\n  STREAKS_URL: "%s"\n};\n' \
+            "$(url habits)" "$(url streaks)" > ui/config.js
+          cat ui/config.js
+
+      - name: Upload the UI to the storage static website
+        run: |
+          az storage blob upload-batch --account-name "$UI_STORAGE" --auth-mode key \
+            --destination '$web' --source ui --overwrite -o none
+          echo "UI: $(az storage account show -n "$UI_STORAGE" -g "$RESOURCE_GROUP" --query primaryEndpoints.web -o tsv)"
+
+      # The first call starts the container and may wake the database (up to about a minute).
+      - name: Check /health on both services
+        run: |
+          for url in "$HABITS_URL" "$STREAKS_URL"; do
+            for i in $(seq 1 24); do        # 24 x 10 s = 4 minutes
+              code=$(curl -s -o /tmp/health -w '%{http_code}' --max-time 30 "$url/health" || true)
+              if [ "$code" = "200" ]; then echo "$url/health: $(cat /tmp/health)"; continue 2; fi
+              echo "$url/health: $code, retrying in 10 s"; sleep 10
+            done
+            echo "::error::$url/health did not answer 200 in 4 minutes"; exit 1
+          done

@@ -131,6 +131,25 @@ CI runs it as its own `integration` job, and the images are only built after it 
 
 To run a published image: `docker run --rm ghcr.io/<owner>/habit-buddy-habits:<sha>`. It starts and then fails to connect to a database, because there is no `DATABASE_URL`.
 
+## Deploy to Azure
+
+Everything runs in my Azure for Students subscription, in the resource group `rg-lalarcher-ieu2024` (France Central), and is pay-per-use (ADR 8).
+
+**One-time setup** (with my own account, in Azure Cloud Shell or after `az login`):
+
+```bash
+bash infra/azure-setup.sh
+```
+
+It creates the storage static website for the UI, the SQL server with one free serverless database and one user per service, the Container Apps environment with both apps (min 0, max 1 replica), and the managed identity the pipeline signs in as. It asks for the passwords and stores them only as Container App secrets. At the end it prints the values to add in GitHub under *Settings > Secrets and variables > Actions*:
+
+- secrets `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`
+- variables `PREFIX`, `RESOURCE_GROUP`, `UI_STORAGE`
+
+After the first push to `main`, make the two packages on ghcr.io public (package settings), so Azure can pull them without a token.
+
+**Every push to `main`** runs `.github/workflows/deploy.yml`: the whole CI first, then, only if it passes, both Container Apps switch to the image of that commit, `ui/config.js` is written with the services' addresses, the UI is uploaded to the static website, and the run fails unless both `/health` endpoints answer 200 within 4 minutes. Nothing is changed in the portal by hand.
+
 ## Still to do
 
-I still need to build the static UI, validate `system.yaml` against `system.schema.json` in CI, deploy to Azure, write the second migration with before/after evidence, and write ADR 10.
+The static UI and the second migration (`002_add_outfit.sql`) are done. I still need to validate `system.yaml` against `system.schema.json` in CI, run the Azure setup and fill in `public_url`, record the second migration's before/after evidence, and write ADR 10.

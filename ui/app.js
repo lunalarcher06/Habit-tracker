@@ -1,21 +1,22 @@
-/* Habit Buddy: plain JavaScript, no framework, no build step.
+/* Habit Buddy UI: plain JavaScript, no framework, no build step.
+   UI is fully written by Claude Code.
 
-   How this file is organised
-     1. Settings and small helpers
-     2. Talking to the two services (api, habitsApi, streaksApi)
-     3. Small pieces of UI: toast, "waking up" banner, celebration, the cat
-     4. Screens: login, today, new habit, habit detail, milestones
-     5. Events and the hash router
+   What this file does
+     - Settings and small helpers
+     - API calls to Habits and Streaks
+     - Small UI pieces: toast, wake-up banner, celebration, cat
+     - Screens: login, today, new habit, habit detail, milestones
+     - Events and the hash router
 
-   What the server answers (the brief does not spell out every field, so the
-   "normalise" helpers below accept the usual spellings):
+   Server responses this file can handle:
      /auth/login            -> { token, expires_in, user: { ..., outfit } }
-     /habits, /groups       -> [ ... ]                 (or { habits: [...] })
-     /history               -> [ { habit_id, date } ]  (or { history: [...] })
+     /habits, /groups       -> [ ... ] or { habits: [...] }
+     /history               -> [ { habit_id, date } ] or { history: [...] }
      /streaks               -> [ { habit_id, current_streak, longest_streak, completion_rate } ]
      /streaks/<id>          -> same fields + new_milestones: [ { days, item_unlocked } ]
      /milestones            -> [ { days, item_unlocked, earned_at, days_left } ]
-     DELETE /habits/<id>/checkins?date=YYYY-MM-DD   (no date = today)
+     DELETE /habits/<id>/checkins?date=YYYY-MM-DD
+
 */
 (function () {
   'use strict';

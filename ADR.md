@@ -106,7 +106,7 @@ Status: Decided
 
 Context: The assignment asks for a public system on Azure in a subscription whose budget is shared by the whole class, so nothing may have a fixed monthly cost. The system needs two services, one database per service, and a static UI.
 
-Decision: Each service runs as an Azure Container App on the Consumption plan with a minimum of 0 and a maximum of 1 replica, and has its own Azure SQL Database on the serverless tier (General Purpose, Gen5, 0.5 to 1 vCore, auto-pause) on one logical SQL server. The UI is an Azure Static Web App and the images come from GitHub Container Registry, so everything is pay-per-use.
+Decision: Everything is in my own Azure for Students subscription, in one resource group in France Central. Each service runs as an Azure Container App on the Consumption plan with a minimum of 0 and a maximum of 1 replica, and has its own Azure SQL Database on the serverless tier with the free offer (General Purpose, Gen5, 0.5 to 1 vCore, auto-pause) on one logical SQL server. The UI is a static website in a storage account, because Static Web Apps is not available in the allowed regions, and the images come from GitHub Container Registry, so everything is pay-per-use. The one-time setup is `infra/azure-setup.sh`; after it, the pipeline signs in with a managed identity over OIDC (no stored password) and only updates what the setup created.
 
 Alternatives considered:
 - **An App Service plan or virtual machines** — they have a fixed monthly cost even when nobody uses the app, and the class budget is shared.

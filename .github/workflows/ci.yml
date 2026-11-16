@@ -2,11 +2,14 @@
 # against a real SQL Server with a 70% coverage gate, run one integration test across the
 # seam, and build both Docker images.
 # Images are pushed to ghcr.io (tagged with the commit SHA) only from main.
+# On main this file is run by deploy.yml (workflow_call), so main does not run it twice.
 name: CI
 
 on:
   push:
+    branches-ignore: [main]
   pull_request:
+  workflow_call:
 
 permissions:
   contents: read
@@ -139,5 +142,6 @@ jobs:
           build-args: GIT_SHA=${{ github.sha }}
           push: ${{ github.ref == 'refs/heads/main' }}
           tags: ghcr.io/${{ env.OWNER }}/habit-buddy-${{ matrix.service }}:${{ github.sha }}
+          provenance: false          # otherwise Container Apps cannot pull the tag ("Authentication failed")
           cache-from: type=gha
           cache-to: type=gha,mode=max
