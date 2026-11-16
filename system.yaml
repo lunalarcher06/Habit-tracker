@@ -1,14 +1,14 @@
 # yaml-language-server: $schema=./system.schema.json
 student: lalarcher.ieu2024
 prefix: lalarcher-ieu2024
-public_url: https://REPLACE-AFTER-AZURE-SETUP.web.core.windows.net
+public_url: https://lalarcherieu2024ui.z43.web.core.windows.net
 ui:
   path: ui
   storage_account: lalarcherieu2024ui
   calls: [habits, streaks]
 azure:
   resource_group: rg-lalarcher-ieu2024
-  region: francecentral
+  region: spaincentral
   managed_identity: lalarcher-ieu2024-github
   container_apps_environment: lalarcher-ieu2024-env
   sql_server: lalarcher-ieu2024-sql

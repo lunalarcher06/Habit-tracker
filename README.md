@@ -133,7 +133,9 @@ To run a published image: `docker run --rm ghcr.io/<owner>/habit-buddy-habits:<s
 
 ## Deploy to Azure
 
-Everything runs in my Azure for Students subscription, in the resource group `rg-lalarcher-ieu2024` (France Central), and is pay-per-use (ADR 8).
+**Live:** https://lalarcherieu2024ui.z43.web.core.windows.net
+
+Everything runs in my Azure for Students subscription, in the resource group `rg-lalarcher-ieu2024` (Spain Central), and is pay-per-use (ADR 8).
 
 **One-time setup** (with my own account, in Azure Cloud Shell or after `az login`):
 
@@ -141,7 +143,7 @@ Everything runs in my Azure for Students subscription, in the resource group `rg
 bash infra/azure-setup.sh
 ```
 
-It creates the storage static website for the UI, the SQL server with one free serverless database and one user per service, the Container Apps environment with both apps (min 0, max 1 replica), and the managed identity the pipeline signs in as. It asks for the passwords and stores them only as Container App secrets. At the end it prints the values to add in GitHub under *Settings > Secrets and variables > Actions*:
+It creates the storage static website for the UI, the SQL server with one serverless database and one user per service, the Container Apps environment with both apps (min 0, max 1 replica), and the managed identity the pipeline signs in as. It asks for the passwords and stores them only as Container App secrets. At the end it prints the values to add in GitHub under *Settings > Secrets and variables > Actions*:
 
 - secrets `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`
 - variables `PREFIX`, `RESOURCE_GROUP`, `UI_STORAGE`
@@ -152,4 +154,4 @@ After the first push to `main`, make the two packages on ghcr.io public (package
 
 ## Still to do
 
-The static UI and the second migration (`002_add_outfit.sql`) are done. I still need to validate `system.yaml` against `system.schema.json` in CI, run the Azure setup and fill in `public_url`, record the second migration's before/after evidence, and write ADR 10.
+The static UI and the second migration (`002_add_outfit.sql`) are done. I still need to validate `system.yaml` against `system.schema.json` in CI, record the second migration's before/after evidence, and write ADR 10.
