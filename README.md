@@ -152,8 +152,10 @@ After the first push to `main`, make the two packages on ghcr.io public (package
 
 **Every push to `main`** runs `.github/workflows/deploy.yml`: the whole CI first, then, only if it passes, both Container Apps switch to the image of that commit, `ui/config.js` is written with the services' addresses, the UI is uploaded to the static website, and the run fails unless both `/health` endpoints answer 200 within 4 minutes. Nothing is changed in the portal by hand.
 
+## Migration evidence
+
+`docs/evidence/migrations-before.txt` and `migrations-after.txt` show the live data on Azure before and after migrations Habits 003–006 and Streaks 002: every check-in is kept, the milestone rows are kept with their rewards renamed, and the startup logs show each migration applied once.
+
 ## Still to do
 
 - Validate `system.yaml` against `system.schema.json` in CI (waiting for the schema file).
-- Record the after half of the migration evidence on Azure (the before half is in `docs/evidence/migrations-before.txt`).
-
