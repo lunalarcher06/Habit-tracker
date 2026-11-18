@@ -3,7 +3,7 @@
 //            nag (or alert) = a habit is still missing today: the cat shows its mean face with a "!"
 //   height = stage height in px (default 150) · start = 0..1, where the cat begins · floor = line | none
 //   base   = folder of the pictures (default "cat/")
-//   outfit = the name of an outfit (e.g. "chef"). If cat/outfits/<name>/ holds a full set of pictures (same
+//   outfit = the name of an outfit (e.g. "royal"). If cat/outfits/<name>/ holds a full set of pictures (same
 //            file names as cat/), the cat does everything it normally does, wearing the outfit. Until it does,
 //            the single picture cat/outfits/<name>.png is shown, and it can only hop and waddle.
 //   cue    = "celebrate:1" | "alert:1" | "wake:1": change the number to play it again.
