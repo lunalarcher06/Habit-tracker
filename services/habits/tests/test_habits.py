@@ -146,3 +146,9 @@ class TestCheckins:
         log_checkin(db, 1, hid, "2026-10-02")
         result = checkins_by_date(db, hid)
         assert result == {"2026-10-01": 1, "2026-10-02": 2}
+
+    def test_checkin_sets_updated_at(self, db):
+        hid = create_habit(db, 1, "Read")
+        log_checkin(db, 1, hid, "2026-10-01")
+        row = db.execute("SELECT updated_at FROM checkins WHERE habit_id = %s", (hid,)).fetchone()
+        assert row["updated_at"].date().isoformat() != "2026-10-01"   # set to now, not the day

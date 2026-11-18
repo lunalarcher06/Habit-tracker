@@ -15,6 +15,9 @@ PREFIX=lalarcher-ieu2024
 RG=rg-$PREFIX
 LOC=spaincentral                               # one of the five regions this Azure for Students subscription allows (see its policy)
 REPO=lunalarcher06/Habit-tracker               
+# GitHub's OIDC token names the repository with its owner and repository IDs
+# (the "subject claim" in the azure/login log): repo:<owner>@<owner id>/<repo>@<repo id>:ref:refs/heads/main
+OIDC_SUBJECT="repo:lunalarcher06@232092257/Habit-tracker@1397831498:ref:refs/heads/main"
 OWNER=lunalarcher06                            
 UI_STORAGE=lalarcherieu2024ui                  
 SQL=$PREFIX-sql
@@ -129,7 +132,7 @@ azr role assignment create --assignee-object-id "$PRINCIPAL" --assignee-principa
   --role Contributor --scope "$RG_ID" -o none
 azr identity federated-credential create --name github-main --identity-name $PREFIX-github -g $RG \
   --issuer https://token.actions.githubusercontent.com \
-  --subject "repo:$REPO:ref:refs/heads/main" --audiences api://AzureADTokenExchange -o none
+  --subject "$OIDC_SUBJECT" --audiences api://AzureADTokenExchange -o none
 
 cat <<EOF
 

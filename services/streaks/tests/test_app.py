@@ -73,7 +73,7 @@ def test_milestone_is_awarded_once_and_listed(client, monkeypatch):
 
     milestones = client.get("/milestones", headers=auth_header()).get_json()["milestones"]
     assert sorted(m["streak_length"] for m in milestones) == [3, 7]
-    assert {m["item_unlocked"] for m in milestones} == {"headphones", "cool"}
+    assert {m["item_unlocked"] for m in milestones} == {"yarn", "bowl"}
     assert client.get("/milestones?habit_id=99", headers=auth_header()).get_json() == {"milestones": []}
 
 

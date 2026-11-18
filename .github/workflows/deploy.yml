@@ -36,7 +36,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - run: echo "OWNER=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
+      # lowercase owner for image names; trim stray spaces pasted into the repository variables
+      - run: |
+          echo "OWNER=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
+          for v in PREFIX RESOURCE_GROUP UI_STORAGE; do
+            val=$(echo "${!v}" | xargs)
+            [ -n "$val" ] || { echo "::error::repository variable $v is not set"; exit 1; }
+            echo "$v=$val" >> "$GITHUB_ENV"
+          done
 
       - uses: azure/login@v2
         with:

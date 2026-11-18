@@ -18,12 +18,13 @@ fetchall() -> returns all habits as a list
 """
 from datetime import date, timedelta
 
-# Every milestone unlocks one outfit for the cat. The UI has a picture for each name.
-OUTFITS = {
-    3: "headphones", 7: "cool", 14: "chef", 21: "bookworm", 30: "wizard", 45: "aviator",
-    60: "sheriff", 90: "astronaut", 100: "lucky", 150: "ninja", 200: "cyberpunk", 365: "royal",
+# Every milestone unlocks one reward for the cat: something for his room (3 to 100 days)
+# or, for the three longest streaks, an outfit he can wear. The UI has a picture for each name.
+REWARDS = {
+    3: "yarn", 7: "bowl", 14: "scratcher", 21: "bed", 30: "plant", 45: "rug",
+    60: "window", 90: "tree", 100: "fishtank", 150: "headphones", 200: "cool", 365: "royal",
 }
-MILESTONE_DAYS = tuple(sorted(OUTFITS))
+MILESTONE_DAYS = tuple(sorted(REWARDS))
 
 #Mon=0 … Sun=6  
 _WEEKDAY_BIT = {i: (1 << i) for i in range(7)}
@@ -173,7 +174,7 @@ def check_and_award_milestones(db, user_id, habit_id, streak, as_of=None):
             db.execute(
                 """INSERT INTO milestones (user_id, habit_id, streak_length, item_unlocked, achieved_on)
                    VALUES (%s, %s, %s, %s, %s)""",
-                (user_id, habit_id, threshold, OUTFITS[threshold], as_of.isoformat()),
+                (user_id, habit_id, threshold, REWARDS[threshold], as_of.isoformat()),
             )
             awarded.append(threshold)
 

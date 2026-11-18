@@ -121,7 +121,7 @@ def log_checkin(db, user_id, habit_id, day=None):
     day = day or date.today().isoformat()
     # SQL Server has no ON CONFLICT: update the day's row, and insert it if none was updated
     db.execute(
-        """UPDATE checkins WITH (UPDLOCK, SERIALIZABLE) SET count = count + 1
+        """UPDATE checkins WITH (UPDLOCK, SERIALIZABLE) SET count = count + 1, updated_at = SYSUTCDATETIME()
            WHERE habit_id = %s AND date = %s;
            IF @@ROWCOUNT = 0
                INSERT INTO checkins (habit_id, date, count) VALUES (%s, %s, 1)""",
@@ -136,7 +136,7 @@ def undo_checkin(db, user_id, habit_id, day=None):
         raise ValueError("habit not found for this user")
     day = day or date.today().isoformat()
     db.execute(
-        "UPDATE checkins SET count = CASE WHEN count > 0 THEN count - 1 ELSE 0 END WHERE habit_id = %s AND date = %s",
+        "UPDATE checkins SET count = CASE WHEN count > 0 THEN count - 1 ELSE 0 END, updated_at = SYSUTCDATETIME() WHERE habit_id = %s AND date = %s",
         (habit_id, day),
     )
     db.commit()

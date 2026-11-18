@@ -93,7 +93,9 @@ def group_json(row):
 def user_json(row):
     return {"id": row["id"], "first_name": row["first_name"],
             "last_name": row["last_name"], "username": row["username"],
-            "outfit": row["outfit"]}
+            "outfit": row["outfit"],
+            "room": None if row["room"] is None else [i for i in row["room"].split(",") if i],
+            "wall": row["wall"]}
 
 
 def checkin_state(habit, day, count):
@@ -142,10 +144,13 @@ def login():
     token = jwt.encode(claims, JWT_SECRET, algorithm="HS256")
     return jsonify({"token": token, "expires_in": TOKEN_SECONDS, "user": user_json(user)})
 
-# The signed-in user. The only thing that can change is the cat's outfit.
-# Same names as the outfits Streaks hands out as milestone rewards.
-OUTFITS = {"none", "headphones", "cool", "chef", "bookworm", "wizard", "aviator",
-           "sheriff", "astronaut", "lucky", "ninja", "cyberpunk", "royal"}
+# The signed-in user. The only things that can change are the cat's outfit, what is in his room,
+# and the colour of the room's wall.
+# Same names as the rewards Streaks hands out for milestones.
+OUTFITS = {"none", "headphones", "cool", "royal"}
+ROOM_ITEMS = {"yarn", "bowl", "scratcher", "bed", "plant", "rug", "window", "tree", "fishtank"}
+ROOM_MAX = 5
+WALLS = {"cream", "pink", "sage"}
 
 
 @app.get("/me")
@@ -158,12 +163,24 @@ def me_get():
 @token_required
 def me_update():
     data = body()
-    if set(data) != {"outfit"}:
-        return error("validation_error", "Only outfit can change.", 422)
-    if data["outfit"] not in OUTFITS:
+    if not data or not set(data) <= {"outfit", "room", "wall"}:
+        return error("validation_error", "Only outfit, room and wall can change.", 422)
+    if "wall" in data and data["wall"] not in WALLS:
+        return error("validation_error", "Unknown wall colour.", 422)
+    if "outfit" in data and data["outfit"] not in OUTFITS:
         return error("validation_error", "Unknown outfit.", 422)
+    room = data.get("room")
+    if "room" in data:
+        if (not isinstance(room, list) or len(room) > ROOM_MAX or len(set(room)) != len(room)
+                or not all(isinstance(i, str) and i in ROOM_ITEMS for i in room)):
+            return error("validation_error", f"room must be a list of up to {ROOM_MAX} different room items.", 422)
     db = get_db()
-    db.execute("UPDATE users SET outfit = %s WHERE id = %s", (data["outfit"], g.user_id))
+    if "outfit" in data:
+        db.execute("UPDATE users SET outfit = %s WHERE id = %s", (data["outfit"], g.user_id))
+    if "room" in data:
+        db.execute("UPDATE users SET room = %s WHERE id = %s", (",".join(room), g.user_id))
+    if "wall" in data:
+        db.execute("UPDATE users SET wall = %s WHERE id = %s", (data["wall"], g.user_id))
     db.commit()
     return jsonify(user_json(get_user_by_id(db, g.user_id)))
 

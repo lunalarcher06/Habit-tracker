@@ -16,6 +16,7 @@
 //     vid/sd00..sd16       standing -> sitting down, from the side (played backwards: standing up)
 //     vid/gr00..gr44       sitting, raising a paw and washing its face
 //     tr/tr00..tr84        walking right, turning round through the camera, walking left (played mirrored for the other way)
+//     vid/jp00..jp64       a real jump, from the side: a few steps, crouch, leap, land, stand (the celebration)
 //
 // How it moves
 //  - Everything the cat does is a queue of small steps (sit, stand up, walk to a spot, wash, jump, ...).
@@ -30,12 +31,23 @@
 
   var SIT_H = 390;                       // reference height that sets the cat's size on the stage (source px)
   var STATIC_SCALE = 0.8;                // a single costume picture is drawn at this share of its size
-  var WALK_FRAMES = 44, SD_N = 17, GR_N = 45, HP_N = 37, ZZ_N = 69, TR_N = 85;     // filmed frames in each clip
+  var WALK_FRAMES = 44, SD_N = 17, GR_N = 45, HP_N = 37, ZZ_N = 69, TR_N = 85, JP_N = 65;     // filmed frames in each clip
   var WALK_W = 482;                      // the filmed cat is as wide as this many source px (same size as the other pictures)
   var WORLD_W = 1114;                    // ...which is this many pixels of the film frame ("world" pixels)
   var WORLD_C = 557;                     // world x of the middle of the walking pictures: where the cat's `x` is
   var WORLD_PER_PX = 1114 / 560;         // world pixels per pixel of a picture file
   var FA_X0 = -141;                      // world x of the left edge of the fa/ pictures (they are a little wider)
+  var JP_X0 = -11 * 1114 / 560;          // world x of the left edge of the jump pictures (wider and taller: room for the leap)
+  // The jump was filmed with the camera following the cat, so the clip barely moves: the cat is carried
+  // forward in code. Source px travelled per frame: a few steps, the take-off, the flight, the landing.
+  var JP_STEP = (function () {
+    var v = [], n;
+    for (n = 0; n < JP_N; n++) v.push(n < 12 ? 4.5 : n < 20 ? 4.5 + (n - 12) * 1.4 : n < 36 ? 15.7 : n < 48 ? 15.7 * (48 - n) / 12 : 0);
+    var d = [0]; for (n = 1; n < JP_N; n++) d.push(d[n - 1] + v[n]);
+    return d;
+  })();
+  var JP_DIST = JP_STEP[JP_N - 1];         // how far a whole jump carries the cat (source px)
+  var JP_TAKEOFF = 13, JP_LAND = 36;      // frames where the paws leave the floor and touch it again
   var WALK_HEAD = 0.3589;                // side view: the head is this share of the picture's width right of its middle
   var FACE_HEAD = 182;                   // facing you: the head is this many world pixels left of the middle (before mirroring)
   var WALK_STAND_FRAME = 16;             // the walk frame that looks most like standing still: walks start from it
@@ -70,12 +82,14 @@
     '.floor{position:absolute;left:0;right:0;bottom:10px;height:1px;background:var(--color-divider,rgba(255,255,255,.16))}' +
     '.fx{position:absolute;pointer-events:none;font-family:var(--font-heading,system-ui);font-weight:700;width:0;height:0;left:0;bottom:0}' +
     '.fx span{position:absolute;left:0;bottom:0;opacity:0;white-space:nowrap}' +
-    '.zzz{color:var(--color-neutral-600,#888);font-size:18px;font-style:italic}.bang{color:var(--color-accent-300,#ffc46b);font-size:36px}' +
+    '.zzz{color:var(--color-neutral-600,#888);font-size:18px;font-style:italic}.bang{color:#e0302b;font-size:36px}' +
     '[data-fx=sleep] .zzz{animation:zz 3.6s ease-in infinite}[data-fx=alert] .bang{animation:bp .9s ease-in-out infinite}' +
     '@keyframes zz{0%{opacity:0;transform:scale(.7)}20%{opacity:.95}80%{opacity:.6}100%{opacity:0;transform:translate(22px,-42px) scale(1.15)}}' +
     '@keyframes bp{0%,100%{opacity:.9;transform:translateY(0) scale(1)}50%{opacity:1;transform:translateY(-8px) scale(1.15)}}' +
-    '.conf{position:absolute;inset:0;pointer-events:none}.conf i{position:absolute;left:0;bottom:0;width:5px;height:9px;border-radius:1px;opacity:0;animation:cb 1.1s ease-out 1}' +
-    '@keyframes cb{0%{opacity:1;transform:none}100%{opacity:0;transform:translate(var(--dx),var(--dy)) rotate(var(--rot)) scale(.5)}}' +
+    '.conf{position:absolute;left:0;bottom:0;width:0;height:0;pointer-events:none}.conf i{position:absolute;left:0;top:0;width:5px;height:9px;border-radius:1px;opacity:0;animation:cb 1.3s ease-out 1 both}' +
+    '.conf i.sp{width:12px;height:12px;border-radius:0;clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%);animation:sp 1.5s ease-out 1 both}' +
+    '@keyframes cb{0%{opacity:1;transform:translate(var(--x0),var(--y0)) scale(.6)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) rotate(var(--rot)) scale(.5)}}' +
+    '@keyframes sp{0%{opacity:0;transform:translate(var(--x0),var(--y0)) scale(.2)}25%{opacity:1;transform:translate(var(--x0),var(--y0)) scale(1.15) rotate(20deg)}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.4) rotate(90deg)}}' +
     '@media (prefers-reduced-motion:reduce){.fx span{animation:none!important}}';
 
   function R(a, b) { return a + Math.random() * (b - a); }
@@ -100,10 +114,10 @@
   function isReady(path) { var s = sprites[path]; return !!(s && s.ready); }
   function two(n) { return (n < 10 ? '0' : '') + n; }
   function walkPath(dir, n) { return dir + 'walk/w' + two(n) + '.webp'; }
-  function sidePath(dir, set, n) { return dir + 'vid/' + set + two(n) + '.webp'; }       // set: sd | gr
+  function sidePath(dir, set, n) { return dir + 'vid/' + set + two(n) + '.webp'; }       // set: sd | gr | jp
   function facePath(dir, name) { return dir + 'fa/' + name + '.webp'; }                  // main | mean
   function faceFrame(dir, set, n) { return dir + 'fa/' + set + two(n) + '.webp'; }       // set: hp | zz
-  var COUNTS = { walk: WALK_FRAMES, sd: SD_N, gr: GR_N, hp: HP_N, zz: ZZ_N, tr: TR_N };
+  var COUNTS = { walk: WALK_FRAMES, sd: SD_N, gr: GR_N, hp: HP_N, zz: ZZ_N, tr: TR_N, jp: JP_N };
   // Settings of a set of pictures. The plain cat's are these; an outfit folder has its own set.json with
   // the same fields (it usually has fewer clips: a walk, a turn and a main pose).
   //   walk, tr: number of frames · trEnd: walk frame the turn ends on · len: stride (source px per step cycle)
@@ -113,7 +127,7 @@
   var metas = {};                                                  // folder -> settings (loaded set.json)
   function setPath(dir, set, n) {
     return set === 'walk' ? walkPath(dir, n) : set === 'tr' ? dir + 'tr/tr' + two(n) + '.webp'
-      : (set === 'sd' || set === 'gr') ? sidePath(dir, set, n) : faceFrame(dir, set, n);
+      : (set === 'sd' || set === 'gr' || set === 'jp') ? sidePath(dir, set, n) : faceFrame(dir, set, n);
   }
   function preloadAll(dir, meta) {
     if (!meta) { Object.keys(COUNTS).forEach(function (set) { for (var i = 0; i < COUNTS[set]; i++) preload(setPath(dir, set, i)); }); preload(facePath(dir, 'mean')); }
@@ -274,10 +288,26 @@
         this.hold('main', 230, { sq: [1.06, 0.9] }),                                  // landing squash
         this.rest(300)]);
     }
-    // Celebrating: once. Confetti, the happy face with the tail up and a little hop, then calm again.
+    // A real jump (the filmed clip): stand up, a few steps, crouch, leap forward, land. It jumps towards the side
+    // of the stage with more room. `party` = the celebration: sparkles all round the cat as it takes off and lands.
+    canJump() { return !this._costume && this.has('jp') && this.has('sd') && this.canWalk(); }
+    jumpSteps(party) {
+      var self = this, c = this.c, b = this.bounds();
+      var dir = (b.max - c.x) >= (c.x - b.min) ? 1 : -1;
+      var s = [{ faceTo: c.x + dir * 50 }].concat(this.toStand());
+      if (party) s.push(this.call(function () { self.burst(); }));
+      s.push({ clip: 'jp', from: 0, to: JP_N - 1, end: 'stand', hold: 0, fps: FPS, travel: true, blend: 160, party: !!party });
+      return s.concat(this.toFace());
+    }
+    // Celebrating: once, only when a habit was logged. A real jump with sparkles, then the happy face, then calm again.
     celebrateSteps() {
       var self = this;
       if (this._costume || !this.has('hp')) return this.toFace().concat([this.call(function () { self.burst(); })], this.hopSteps(0.7));
+      if (this.canJump()) return this.jumpSteps(true).concat([
+        this.clip('hp', HP_N - 1, HAPPY_FRAME, 'happy', 0, 48),
+        { pose: 'happy', ms: 900 },
+        this.clip('hp', HAPPY_FRAME, HP_N - 1, 'main', 0, 48),
+        this.rest(400)]);
       return this.toFace().concat([
         this.call(function () { self.burst(); }),
         this.clip('hp', HP_N - 1, HAPPY_FRAME, 'happy', 0, 48),                       // calm -> happy (the tail rises, the mouth opens)
@@ -329,7 +359,7 @@
         if (!s.length) { var far = c.x - b.min < b.max - c.x ? b.max - R(0, 30) : b.min + R(0, 30); s = this.goTo(far, Math.random() < 0.3 ? 'stroll' : 'walk'); }
         s = s.concat([this.rest(R(1200, 2600))]);
       }
-      else if (m === 'wave') s = this.hopSteps(0.7).concat([this.rest(R(2500, 4000))]);   // a hello, not a celebration
+      else if (m === 'wave') s = (this.canJump() ? this.jumpSteps(false) : this.hopSteps(0.7)).concat([this.rest(R(2500, 4000))]);   // a hello, not a celebration
       else if (m === 'groom') { s = this.groomSteps(); s = s.length ? s.concat([this.rest(R(1500, 2500))]) : [this.rest(R(3000, 5000))]; }
       else s = this.autoPlan();                                       // auto, sit, nag, alert
       this.q = this.q.concat(s);
@@ -352,7 +382,7 @@
       if (p === 'wander') { var t = b.min + Math.random() * w; return this.goTo(t, 'walk').concat([this.rest(R(3000, 7000))]); }
       if (p === 'patrol') return this.patrolSteps().concat([this.rest(R(2500, 6000))]);
       if (p === 'groom') return this.groomSteps().concat([this.rest(R(3000, 6000))]);
-      if (p === 'hop') return this.hopSteps().concat([this.rest(R(2500, 6000))]);
+      if (p === 'hop') return (this.canJump() ? this.jumpSteps(false) : this.hopSteps()).concat([this.rest(R(2500, 6000))]);
       return this.alertSteps().concat([this.rest(R(3000, 6000))]);
     }
 
@@ -364,23 +394,28 @@
     cue(a) {
       var pre = this.asleepNow() ? this.wakeSteps() : [];
       var s = a === 'celebrate' ? this.celebrateSteps()                // only app.js sends it, after a habit is logged
-        : a === 'jump' ? this.hopSteps()
+        : a === 'jump' ? (this.canJump() ? this.jumpSteps(false) : this.hopSteps())
         : a === 'alert' ? this.alertSteps(1700)
         : a === 'stretch' ? this.alertSteps(1300)
         : a === 'wake' ? this.wakeSteps() : [];
       this.interrupt(pre.concat(s));
     }
     arc(ms, h) { this.c.jump = { t0: performance.now(), ms: ms, h: h }; }
+    // Sparkles and confetti all round the cat's body (not just its face). paint() keeps them on the cat as it moves.
     burst() {
       var el = this.$conf; el.innerHTML = '';
-      var cols = ['var(--color-accent,#a5bcd6)', 'var(--color-accent-300,#ffc46b)', '#e2452b', '#f5efc6'];
-      var b = this.vis.b;
-      this.confY = 10 + (b && b.fam === 'face' ? b.h : SIT_H * this.k) * 0.62;   // face height; paint() keeps it on the head
-      for (var i = 0; i < 18; i++) {
-        var s = document.createElement('i'), a = Math.PI * 2 * i / 18 + Math.random() * 0.3, d = 50 + Math.random() * 55;
-        s.style.setProperty('--dx', Math.cos(a) * d + 'px'); s.style.setProperty('--dy', (Math.sin(a) * d - 10) + 'px');
-        s.style.setProperty('--rot', Math.random() * 380 + 'deg'); s.style.background = cols[i % 4];
-        s.style.animationDelay = Math.random() * 0.06 + 's'; el.appendChild(s);
+      var cols = ['var(--color-accent,#a5bcd6)', 'var(--color-accent-300,#ffc46b)', '#e2452b', '#f5efc6', '#ffd84d'];
+      var k = this.k, rx = WALK_W * k * 0.5, ry = SIT_H * k * 0.42;   // half the body's width and height
+      this.confY = ry + 6;                                             // the middle of the body, above the floor
+      var N = 40;
+      for (var i = 0; i < N; i++) {
+        var s = document.createElement('i'), a = Math.PI * 2 * i / N + Math.random() * 0.25;
+        var spark = i % 3 === 0, r0 = 0.75 + Math.random() * 0.25, d = 1.12 + Math.random() * 0.45;
+        if (spark) s.className = 'sp';
+        s.style.setProperty('--x0', (Math.cos(a) * rx * r0).toFixed(1) + 'px'); s.style.setProperty('--y0', (Math.sin(a) * ry * r0).toFixed(1) + 'px');
+        s.style.setProperty('--dx', (Math.cos(a) * rx * d).toFixed(1) + 'px'); s.style.setProperty('--dy', (Math.sin(a) * ry * d - 12).toFixed(1) + 'px');
+        s.style.setProperty('--rot', Math.random() * 380 + 'deg'); s.style.background = cols[i % cols.length];
+        s.style.animationDelay = (Math.random() * (spark ? 0.35 : 0.08)).toFixed(2) + 's'; el.appendChild(s);
       }
     }
     onClick(e) {
@@ -423,6 +458,11 @@
         if (s.clip) {
           var dur = Math.abs(s.to - s.from) / s.fps * 1000 + s.hold;
           this.cur.clipMs = dur;
+          if (s.travel) {                                                 // the jump carries it forward, as far as the stage allows
+            var bb = this.bounds(), room = c.dir === 1 ? bb.max - c.x : c.x - bb.min;
+            this.cur.x0 = c.x; this.cur.tscale = Math.max(0, Math.min(1, room / (JP_DIST * this.k)));
+          }
+          if (s.blend && this.vis.b) { this.vis.a = this.vis.b; this.vis.mix = 0; this.vis.fade = s.blend; }   // ease into the clip's first picture
           if (!this._costume) { c.pose = 'clip'; c.clipSet = s.clip; c.clipFrame = s.from; }
           c.fx = 'none'; c.tx = 1; c.ty = 1;
           return;
@@ -462,6 +502,13 @@
         var n = Math.abs(s.to - s.from), run = n / s.fps * 1000, sign = s.to >= s.from ? 1 : -1;
         var fi = Math.min(n, Math.floor(Math.min(s.acc, run) * s.fps / 1000));
         if (!this._costume) c.clipFrame = s.from + sign * fi;
+        if (s.travel) {
+          var fp = Math.min(n, Math.min(s.acc, run) * s.fps / 1000), f0 = Math.floor(fp), f1 = Math.min(n, f0 + 1);
+          var dist = JP_STEP[f0] + (JP_STEP[f1] - JP_STEP[f0]) * (fp - f0);
+          c.x = s.x0 + c.dir * dist * k * s.tscale;
+          if (!s.arced && fp >= JP_TAKEOFF) { s.arced = true; this.arc((JP_LAND - JP_TAKEOFF) / s.fps * 1000, 0.3); }
+          if (s.party && !s.landed && fp >= JP_LAND) { s.landed = true; this.burst(); }
+        }
         if (s.acc >= s.clipMs) {
           if (!this._costume) c.pose = s.end;
           if (s.turnTo !== undefined) { c.dir = s.turnTo; c.afterTurn = true; }
@@ -507,7 +554,7 @@
       if (pose === 'sleep') return this.mk(faceFrame(d, 'zz', ZZ_N - 1), 'face', { x0: FA_X0, still: true });
       if (pose === 'clip') {
         var face = c.clipSet === 'hp' || c.clipSet === 'zz';
-        var g = this.mk(setPath(d, c.clipSet, c.clipFrame), face ? 'face' : 'vid', { x0: face ? FA_X0 : 0 });
+        var g = this.mk(setPath(d, c.clipSet, c.clipFrame), face ? 'face' : 'vid', { x0: face ? FA_X0 : c.clipSet === 'jp' ? JP_X0 : 0 });
         if (c.clipSet === 'tr') g.flip = c.turnFrom === -1;                  // the clip turns from facing right to facing left
         return g;
       }
@@ -605,7 +652,7 @@
       if (c.pose === 'sleep' && !costume) { hx = c.x + c.dir * WALK_W * k * 0.5; fh = 0.62; }  // lying down: the head is low, far to the side
       this.$fx.style.transform = 'translate3d(' + hx.toFixed(1) + 'px,' + (-(hh * fh + 8 + c.y)).toFixed(1) + 'px,0)';
       if (this.$fx.dataset.fx !== c.fx) this.$fx.dataset.fx = c.fx;
-      if (this.confY) this.$conf.style.transform = 'translate3d(' + hx.toFixed(1) + 'px,' + (-this.confY).toFixed(1) + 'px,0)';   // confetti around the face
+      if (this.confY) this.$conf.style.transform = 'translate3d(' + c.x.toFixed(1) + 'px,' + (-(this.confY + 10 + c.y)).toFixed(1) + 'px,0)';   // sparkles round the body
     }
   }
   customElements.define('buddy-cat', BuddyCat);

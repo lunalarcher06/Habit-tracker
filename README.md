@@ -1,8 +1,8 @@
 # Habit Buddy
 
-Habit Buddy is a habit tracker for laptops. You can create habits, tick them off each day, and see your streaks, completion rates, and outfit rewards for your cat at 3, 7, 14, 21, 30, 45, 60, 90, 100, 150, 200 and 365 days.
+Habit Buddy is a habit tracker for laptops. You can create habits, tick them off each day, and see your streaks and completion rates. The first time you open the Milestones page you pick a colour for your cat's room (Cream, Pink or Sage), and streak milestones fill it (a yarn ball at 3 days, then a food bowl, scratching post, bed, plant, rug, window, cat tree and fish tank at 7, 14, 21, 30, 45, 60, 90 and 100 days; up to 5 at a time, and you choose which on the Milestones page), and the three longest unlock outfits he can wear: Chill at 150, Cool cat at 200 and King at 365 days.
 
-Assignment 2 splits the app into two Flask services that talk over HTTP, each with its own SQL Server database. **Work in progress:** the services, migrations, Dockerfiles and `docker compose` work locally; the static UI, CI and the second migration are done; the Azure deployment is still to come.
+Assignment 2 splits the app into two Flask services that talk over HTTP, each with its own SQL Server database. The services, migrations, Dockerfiles and `docker compose` work locally; the static UI, CI and the second migration are done; and every push to `main` deploys to Azure (see [Deploy to Azure](#deploy-to-azure)).
 
 ## Services
 
@@ -34,7 +34,7 @@ This starts SQL Server (`mcr.microsoft.com/mssql/server:2022-latest`), a one-off
 
 `db-init` runs `db/init.sql`, which creates the `habits` and `streaks` databases and one login for each. Each login can only use its own database, and the script is safe to run again. On Apple Silicon, SQL Server runs through emulation, so enable Rosetta in Docker Desktop and give it a minute to start. The data lives in the `sqldata` volume, so `docker compose down` keeps it and `docker compose down -v` deletes it.
 
-Each service applies its numbered migrations (`services/<name>/migrations/NNN_*.sql`) when it starts. The `schema_migrations` table records which ones have run, so each runs exactly once.
+Each service applies its numbered migrations (`services/<name>/migrations/NNN_*.sql`; Habits has `001_init` to `006_add_wall`, Streaks has `001_init` and `002_rewards_room_items`; every migration after the first changes a table that already holds rows and keeps them) when it starts. The `schema_migrations` table records which ones have run, so each runs exactly once.
 
 To see the partial-failure behaviour: `docker compose stop habits`, then call `http://localhost:8002/streaks` (503) and `/milestones` (still 200).
 
@@ -108,7 +108,7 @@ cd ../streaks
 TEST_DATABASE_URL="mssql://streaks_user:<password>@localhost:1433/streaks_test" python -m pytest tests -v --cov=.
 ```
 
-Habits has 59 tests and Streaks has 42. Each test starts from empty tables. The service tests call the functions directly. The route tests use Flask's test client, and the Streaks route tests replace the call to Habits with a fake, including the case where Habits is down.
+Habits has 68 tests and Streaks has 44. Each test starts from empty tables. The service tests call the functions directly. The route tests use Flask's test client, and the Streaks route tests replace the call to Habits with a fake, including the case where Habits is down.
 
 ### Integration test across the seam
 
@@ -154,4 +154,6 @@ After the first push to `main`, make the two packages on ghcr.io public (package
 
 ## Still to do
 
-The static UI and the second migration (`002_add_outfit.sql`) are done. I still need to validate `system.yaml` against `system.schema.json` in CI, record the second migration's before/after evidence, and write ADR 10.
+- Validate `system.yaml` against `system.schema.json` in CI (waiting for the schema file).
+- Record the after half of the migration evidence on Azure (the before half is in `docs/evidence/migrations-before.txt`).
+
