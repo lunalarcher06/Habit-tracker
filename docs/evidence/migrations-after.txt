@@ -1,0 +1,27 @@
+# Live data on Azure after migrations habits 003-006 and streaks 002 (2026-11-18T20:33Z)
+GET https://lalarcher-ieu2024-habits.purplegrass-28f7b10d.spaincentral.azurecontainerapps.io/health
+{"db":"ok","status":"ok","version":"8d8eebd8aace8be5f6fa56c55a25e8ca4309b654"}
+
+GET https://lalarcher-ieu2024-habits.purplegrass-28f7b10d.spaincentral.azurecontainerapps.io/history (user democat)
+{"habits":[{"checkins":[{"count":1,"date":"2026-11-11"},{"count":1,"date":"2026-11-12"},{"count":1,"date":"2026-11-13"},{"count":1,"date":"2026-11-14"},{"count":1,"date":"2026-11-15"},{"count":1,"date":"2026-11-16"},{"count":1,"date":"2026-11-17"}],"created_at":"2026-11-17","frequency":"daily","habit_id":3,"name":"Drink water","target_count_per_day":1,"weekdays_mask":null}]}
+
+GET https://lalarcher-ieu2024-habits.purplegrass-28f7b10d.spaincentral.azurecontainerapps.io/me (user democat)
+{"first_name":"Demo","id":2,"last_name":"Cat","outfit":"none","room":null,"username":"democat","wall":null}
+
+GET https://lalarcher-ieu2024-streaks.purplegrass-28f7b10d.spaincentral.azurecontainerapps.io/health
+{"db":"ok","status":"ok","version":"8d8eebd8aace8be5f6fa56c55a25e8ca4309b654"}
+
+GET https://lalarcher-ieu2024-streaks.purplegrass-28f7b10d.spaincentral.azurecontainerapps.io/milestones (user democat)
+{"milestones":[{"achieved_on":"2026-11-17","habit_id":3,"item_unlocked":"bowl","streak_length":7},{"achieved_on":"2026-11-17","habit_id":3,"item_unlocked":"yarn","streak_length":3}]}
+
+# Startup logs of the new revisions (az containerapp logs show --type console), commit 8d8eebd
+habits  2026-11-18T20:31:34.910Z applied migration 003_add_checkin_updated_at.sql
+habits  2026-11-18T20:31:34.937Z applied migration 004_retire_old_outfits.sql
+habits  2026-11-18T20:31:34.946Z applied migration 005_add_room.sql
+habits  2026-11-18T20:31:34.953Z applied migration 006_add_wall.sql
+streaks 2026-11-18T20:31:59.358Z applied migration 002_rewards_room_items.sql
+
+# Compared with migrations-before.txt
+# - democat's 7 check-ins (2026-11-11 to 2026-11-17) are all still there, unchanged.
+# - The two milestone rows are kept (same habit, length and date); their reward was renamed: 3 days headphones -> yarn, 7 days cool -> bowl.
+# - /me now has the new fields: room and wall are NULL (not chosen yet), outfit is reset to none by 004.
