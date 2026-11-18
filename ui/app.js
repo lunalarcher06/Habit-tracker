@@ -200,30 +200,174 @@
     });
   }
   function itemName(text) { var t = String(text).replace(/_/g, ' '); return t.charAt(0).toUpperCase() + t.slice(1); }
-  // ----- the outfits your cat unlocks: one per milestone, pictures in cat/outfits/ -----
-  var OUTFITS = {
-    3: { id: 'headphones', name: 'Headphones' },   7: { id: 'cool', name: 'Sunglasses & leather jacket' },
-    14: { id: 'chef', name: 'Chef' },              21: { id: 'bookworm', name: 'Bookworm' },
-    30: { id: 'wizard', name: 'Wizard hat' },      45: { id: 'aviator', name: 'Aviator' },
-    60: { id: 'sheriff', name: 'Wild West sheriff' }, 90: { id: 'astronaut', name: 'Asteroid explorer' },
-    100: { id: 'lucky', name: 'Lucky maneki-neko' }, 150: { id: 'ninja', name: 'Ninja' },
-    200: { id: 'cyberpunk', name: 'Cyberpunk' },   365: { id: 'royal', name: 'Crown & cape' }
+  // ----- what each milestone unlocks -----
+  // 3 to 100 days: something for the cat's room, shown behind him on the dashboard and the Milestones page
+  // (picture: cat/room/<id>.webp, cut out of one sticker sheet; the emoji only shows if a picture is missing).
+  // 150, 200 and 365 days: an outfit he can wear (pictures: cat/stickers/<id>/, and cat/outfits/<id>/ to animate it).
+  // The ids are the ones Streaks stores in item_unlocked.
+  var REWARDS = {
+    3:   { id: 'yarn',       name: 'Yarn ball',       kind: 'room', emoji: '\ud83e\uddf6' },
+    7:   { id: 'bowl',       name: 'Food bowl',       kind: 'room', emoji: '\ud83e\udd63' },
+    14:  { id: 'scratcher',  name: 'Scratching post', kind: 'room', emoji: '\ud83e\udeb5' },
+    21:  { id: 'bed',        name: 'Cat bed',         kind: 'room', emoji: '\ud83d\udecf\ufe0f' },
+    30:  { id: 'plant',      name: 'Plant',           kind: 'room', emoji: '\ud83e\udeb4' },
+    45:  { id: 'rug',        name: 'Rug',             kind: 'room', emoji: '' },
+    60:  { id: 'window',     name: 'Window',          kind: 'room', emoji: '\ud83e\ude9f' },
+    90:  { id: 'tree',       name: 'Cat tree',        kind: 'room', emoji: '\ud83c\udf33' },
+    100: { id: 'fishtank',   name: 'Fish tank',       kind: 'room', emoji: '\ud83d\udc20' },
+    150: { id: 'headphones', name: 'Chill',           kind: 'outfit' },
+    200: { id: 'cool',       name: 'Cool cat',        kind: 'outfit' },
+    365: { id: 'royal',      name: 'King',            kind: 'outfit' }
   };
+  var OUTFITS = {};                                // only the rewards the cat can wear
   var DEFAULT_ITEM = {};
-  Object.keys(OUTFITS).forEach(function (d) { DEFAULT_ITEM[d] = OUTFITS[d].name; });
-  function outfitName(days, fallback) { return OUTFITS[days] ? OUTFITS[days].name : itemName(fallback); }
-  // The outfit pictures on cards and in the unlock dialog: cat/stickers/<id>/<pose>.webp,
-  // pose = walk | calm | happy | mean | sleep (one drawing set, the same style for all 12 outfits).
+  Object.keys(REWARDS).forEach(function (d) {
+    DEFAULT_ITEM[d] = REWARDS[d].name;
+    if (REWARDS[d].kind === 'outfit') OUTFITS[d] = REWARDS[d];
+  });
+  function isOutfit(days) { return !!OUTFITS[days]; }
+  function rewardName(days, fallback) { return REWARDS[days] ? REWARDS[days].name : itemName(fallback); }
+
+  // Room pictures are loaded once; a picture that is not there yet keeps its emoji.
+  var roomReady = {};
+  Object.keys(REWARDS).forEach(function (d) {
+    var r = REWARDS[d];
+    if (r.kind !== 'room') return;
+    var img = new Image();
+    img.onload = function () {
+      roomReady[r.id] = true;
+      document.querySelectorAll('[data-room="' + r.id + '"]').forEach(function (el) {
+        el.outerHTML = '<img class="pix" src="' + img.src + '" alt="" style="' + (el.getAttribute('style') || '') + '">';
+      });
+    };
+    img.src = 'cat/room/' + r.id + '.webp';
+  });
+  function roomPic(r, style) {
+    if (roomReady[r.id]) return '<img class="pix" src="cat/room/' + r.id + '.webp" alt="" style="' + style + '">';
+    return '<span class="room-emoji" data-room="' + r.id + '" style="' + style + '">' + r.emoji + '</span>';
+  }
+
+  // The picture on cards, badges and the unlock dialog. Outfits: cat/stickers/<id>/<pose>.webp,
+  // pose = walk | calm | happy | mean | sleep.
   function itemIcon(days, size, pose) {
-    if (!OUTFITS[days]) return '';
-    var id = OUTFITS[days].id;
-    if (!pose) pose = id === 'cool' ? 'happy' : 'calm';             // the cool cat only has its sunglasses on when it smiles
-    var src = 'cat/stickers/' + id + '/' + pose + '.webp';
-    return '<img class="pix" src="' + src + '" alt="" style="height:' + size + 'px;width:auto">';
+    var r = REWARDS[days];
+    if (!r) return '';
+    if (r.kind === 'room') return roomPic(r, 'height:' + size + 'px;font-size:' + Math.round(size * 0.8) + 'px');
+    if (!pose) pose = r.id === 'cool' ? 'happy' : 'calm';            // the cool cat only has its sunglasses on when it smiles
+    return '<img class="pix" src="cat/stickers/' + r.id + '/' + pose + '.webp" alt="" style="height:' + size + 'px;width:auto">';
+  }
+
+  // ----- the cat's room -----
+  // At most ROOM_MAX items, so there is room left for the cat to walk. Each item's size is set against the cat:
+  // h = % of the cat's stage height, and the cat himself stands about 56% tall. So the bed is wide enough for him
+  // to lie in, the cat tree almost reaches the ceiling, and the bowl and the yarn come up to about a third of him.
+  var ROOM_MAX = 5;
+  var ROOM_SIZES = { tree: 97, scratcher: 50, plant: 46, bed: 38, fishtank: 34, bowl: 18, yarn: 17 };
+  // Spots: the window hangs on the wall, the rug lies in the middle under the cat, and the rest stand along the
+  // floor from the edges inwards (tallest at the edges), so the middle stays free.
+  var FLOOR_SLOTS = [{ left: '2%' }, { right: '2%' }, { left: '17%' }, { right: '17%' }, { left: '31%' }];
+
+  // Which earned items are in the room. Saved on the user (Habits: PATCH /me, field room).
+  // null = not chosen yet: the newest earned items are shown.
+  function getRoomChoice() {
+    try { return JSON.parse(loadItem('hb_room') || 'null'); } catch (e) { return null; }
+  }
+  function earnedRoomIds(list) {
+    return list.filter(function (m) { return m.earned && REWARDS[m.days] && REWARDS[m.days].kind === 'room'; })
+      .map(function (m) { return REWARDS[m.days].id; });
+  }
+  function roomContents(list) {
+    var earned = earnedRoomIds(list), choice = getRoomChoice();
+    if (!choice) return earned.slice(-ROOM_MAX).reverse();             // newest first
+    return choice.filter(function (id) { return earned.indexOf(id) !== -1; }).slice(0, ROOM_MAX);
+  }
+  function setRoom(ids) {
+    saveItem('hb_room', JSON.stringify(ids));
+    habitsApi('PATCH', '/me', { room: ids }).catch(function (err) {
+      if (err.status !== 401) toast("Couldn't save the room: " + err.message, { error: true });
+    });
+  }
+  function roomById(id) {
+    return REWARDS[Object.keys(REWARDS).filter(function (d) { return REWARDS[d].id === id; })[0]];
+  }
+
+  // Draws the items in the room inside a stage (.auth-stage), behind the cat.
+  function paintRoom(stage, list) {
+    if (!stage) return;
+    var room = stage.querySelector('.room');
+    if (!room) {
+      room = document.createElement('div');
+      room.className = 'room';
+      room.setAttribute('aria-hidden', 'true');
+      stage.insertBefore(room, stage.querySelector('buddy-cat'));
+    }
+    // The room is exactly the cat's own area (the stage can be taller), so the items keep his proportions.
+    var cat = stage.querySelector('buddy-cat');
+    room.style.height = (cat && cat.getAttribute('height') || 260) + 'px';
+    var ids = roomContents(list), html = [];
+    if (ids.indexOf('window') !== -1) html.push(roomItem('window', 'top:7%;left:50%;transform:translateX(-50%);height:44%'));
+    if (ids.indexOf('rug') !== -1) html.push(roomItem('rug', 'bottom:4px;left:26%;width:48%;height:15%'));
+    ids.filter(function (id) { return ROOM_SIZES[id]; })
+      .sort(function (a, b) { return ROOM_SIZES[b] - ROOM_SIZES[a]; })
+      .forEach(function (id, i) {
+        var slot = FLOOR_SLOTS[i];
+        html.push(roomItem(id, 'bottom:10px;' + (slot.left ? 'left:' + slot.left : 'right:' + slot.right) + ';height:' + ROOM_SIZES[id] + '%'));
+      });
+    room.innerHTML = html.join('');
+  }
+  function roomItem(id, style) {
+    var h = +(/height:(\d+)%/.exec(style) || [0, 20])[1];
+    return '<span class="room-item ' + id + '" style="' + style + '">' + roomPic(roomById(id), 'height:100%;font-size:' + Math.round(h * 0.85) + 'cqh') + '</span>';
+  }
+  function repaintRooms() {
+    if (T && T.milestones) paintRoom($('.hero-stage'), toMilestones(T.milestones, bestStreak(T.streaks)));
+    if (lastMilestones.length) paintRoom($('.milestone-stage'), lastMilestones);
+  }
+  // Puts an earned item in the room or takes it out. Returns false if the room is full.
+  function toggleRoomItem(id, list) {
+    var ids = roomContents(list), at = ids.indexOf(id);
+    if (at !== -1) ids.splice(at, 1);
+    else if (ids.length >= ROOM_MAX) return false;
+    else ids.push(id);
+    setRoom(ids);
+    return true;
+  }
+
+  // The room's wall colour, picked once, the first time the user opens Milestones (Habits: PATCH /me, field wall). Cream until then.
+  var WALLS = [{ id: 'cream', name: 'Cream' }, { id: 'pink', name: 'Pink' }, { id: 'sage', name: 'Sage' }];
+  function getWall() { return loadItem('hb_wall') || null; }
+  function applyWall() {
+    document.querySelectorAll('.auth-stage.indoor').forEach(function (el) { el.dataset.wall = getWall() || 'cream'; });
+  }
+  function wallSwatches() {
+    var now = getWall();
+    return '<div class="swatches" role="group" aria-label="Wall colour">' + WALLS.map(function (w) {
+      return '<button type="button" class="swatch" data-action="wall" data-wall="' + w.id + '" data-swatch="' + w.id + '" aria-pressed="' + (now === w.id) + '">' +
+        '<span class="chip" aria-hidden="true"></span>' + w.name + '</button>';
+    }).join('') + '</div>';
+  }
+  // The first time the user opens Milestones, the room asks for a colour (only there, and only until one is chosen).
+  // The dashboard just shows the room in the chosen colour (cream until then).
+  function paintWallPicker() {
+    var stage = $('.milestone-stage'), old = $('#wall-pick');
+    if (old) old.remove();
+    if (!stage || getWall()) return;
+    var box = document.createElement('div');
+    box.id = 'wall-pick';
+    box.className = 'wall-pick';
+    box.innerHTML = '<p><strong>This is your cat\'s room.</strong> Pick a colour for it. Keep your streaks and he will fill it with things.</p>' + wallSwatches();
+    stage.appendChild(box);
+  }
+  function setWall(id) {
+    saveItem('hb_wall', id);
+    applyWall();
+    habitsApi('PATCH', '/me', { wall: id }).catch(function (err) {
+      if (err.status !== 401) toast("Couldn't save the colour: " + err.message, { error: true });
+    });
   }
 
   // The outfit the cat is wearing is saved on the user (Habits: PATCH /me). The server keeps the outfit's
-  // name ("chef"); this page works with the milestone size (14), so these two helpers translate.
+  // name ("royal"); this page works with the milestone size (365), so these two helpers translate.
   function daysForOutfit(id) {
     return Object.keys(OUTFITS).filter(function (d) { return OUTFITS[d].id === id; })[0] || null;
   }
@@ -279,7 +423,8 @@
     if (!milestones || !milestones.length) return;
     var first = milestones[milestones.length - 1];   // several can arrive at once: show the biggest
     var days = num(pick(first, ['days', 'streak_length', 'threshold', 'milestone'], 0));
-    var item = outfitName(days, pick(first, ['item_unlocked', 'item', 'item_name'], 'a new outfit'));
+    var item = rewardName(days, pick(first, ['item_unlocked', 'item', 'item_name'], 'a new reward'));
+    var outfit = isOutfit(days);
     var dlg = $('#celebrate');
     if (typeof dlg.showModal !== 'function') { toast(days + '-day streak! Your cat unlocked ' + item + '.'); return; }
     if (!dlg.open) dlg.showModal();               // open first so the cat can measure its stage
@@ -288,12 +433,19 @@
         '<div class="gift">' + itemIcon(days, 220, 'happy') + '</div>' +
         '<p class="eyebrow">New milestone</p>' +
         '<h2 id="cel-title">' + days + ' days in a row!</h2>' +
-        '<p>Your cat unlocked the <strong>' + esc(item) + '</strong> outfit.</p>' +
+        (outfit
+          ? '<p>Your cat unlocked the <strong>' + esc(item) + '</strong> outfit.</p>'
+          : '<p>Your cat got a new <strong>' + esc(item) + '</strong> for his room.</p>') +
         (milestones.length > 1 ? '<p class="muted">Plus ' + (milestones.length - 1) + ' more.</p>' : '') +
-        '<div class="row" style="justify-content:center"><button class="btn" type="button" data-action="wear-now" data-days="' + days + '" autofocus>Wear it now</button>' +
-        '<button class="btn btn-ghost" type="button" data-action="celebrate-close">Later</button></div>' +
+        '<div class="row" style="justify-content:center">' +
+          (outfit
+            ? '<button class="btn" type="button" data-action="wear-now" data-days="' + days + '" autofocus>Wear it now</button>' +
+              '<button class="btn btn-ghost" type="button" data-action="celebrate-close">Later</button>'
+            : '<button class="btn" type="button" data-action="room-new" data-id="' + esc(REWARDS[days] ? REWARDS[days].id : '') + '" autofocus>Put it in his room</button>' +
+              '<button class="btn btn-ghost" type="button" data-action="celebrate-close">Later</button>') +
+        '</div>' +
       '</div>';
-    toast(days + '-day streak. New outfit: ' + item);
+    toast(days + '-day streak. New ' + (outfit ? 'outfit' : 'room item') + ': ' + item);
   }
 
   // ----- forms: errors next to the field, or under the form -----
@@ -443,6 +595,8 @@
       saveItem('hb_token', token);
       saveItem('hb_user', username);
       saveItem('hb_outfit', (res.user && res.user.outfit) || 'none');
+      saveItem('hb_room', JSON.stringify(res.user && res.user.room ? res.user.room : null));
+      saveItem('hb_wall', (res.user && res.user.wall) || null);
       setCatMode('wave');                         // the cat waves, then we go in
       await wait(1600);
       location.hash = '#/today';
@@ -480,8 +634,8 @@
             '<div class="hero-text"><p class="eyebrow" id="hero-date"></p><h1 id="hero-title"></h1><p class="hero-sub" id="hero-sub"></p></div>' +
             '<div class="hero-progress" id="hero-progress"></div>' +
           '</div>' +
-          '<div class="auth-stage hero-stage"><span class="moon" aria-hidden="true"></span>' +
-            '<buddy-cat id="cat" mode="auto" height="260" start="0.7"></buddy-cat></div>' +
+          '<div class="auth-stage hero-stage indoor">' +
+            '<buddy-cat id="cat" mode="auto" height="300" start="0.7"></buddy-cat></div>' +
         '</section>' +
         '<div class="cols">' +
           '<section class="main-col stack" aria-labelledby="habits-title">' +
@@ -496,6 +650,7 @@
           '</aside>' +
         '</div>' +
       '</div>';
+    applyWall();
     paintToday();
 
     try {
@@ -707,15 +862,16 @@
     } else {
       var best = bestStreak(T.streaks);
       var list = toMilestones(T.milestones, best);
+      paintRoom($('.hero-stage'), list);
       var earned = list.filter(function (m) { return m.earned; }).reverse().slice(0, 3);
       var next = list.filter(function (m) { return !m.earned; })[0];
       body = '<ul class="badges">' +
         earned.map(function (m) {
           return '<li class="badge"><span class="badge-n">' + itemIcon(m.days, 36) + '</span>' +
-            '<span class="badge-t">' + esc(outfitName(m.days, m.item)) + '<small>' + m.days + ' days' + (m.date ? ' &middot; earned ' + fmtDate(m.date) : '') + '</small></span></li>';
+            '<span class="badge-t">' + esc(rewardName(m.days, m.item)) + '<small>' + m.days + ' days' + (m.date ? ' &middot; earned ' + fmtDate(m.date) : '') + '</small></span></li>';
         }).join('') +
         (next ? '<li class="badge locked"><span class="badge-n">' + itemIcon(next.days, 36) + '</span>' +
-          '<span class="badge-t">Next: ' + esc(outfitName(next.days, next.item)) + '<small>' + plural(next.left, 'day') + ' to go</small></span></li>' : '') +
+          '<span class="badge-t">Next: ' + esc(rewardName(next.days, next.item)) + '<small>' + plural(next.left, 'day') + ' to go</small></span></li>' : '') +
         '</ul>' + (earned.length || next ? '' : '<p class="muted">Nothing yet.</p>') +
         '<a href="#/milestones" style="display:inline-block;margin-top:12px;font-size:14px">See all milestones</a>';
     }
@@ -1061,20 +1217,33 @@
   // ------------------------------------------------------------------
 
   var lastMilestones = [];
+  function roomButton(id, inRoom, full) {
+    if (inRoom.indexOf(id) !== -1)
+      return '<button class="btn btn-small" type="button" data-action="room-toggle" data-id="' + id + '" aria-pressed="true" title="Take it out of his room">In his room</button>';
+    return '<button class="btn btn-small btn-ghost" type="button" data-action="room-toggle" data-id="' + id + '" aria-pressed="false"' +
+      (full ? ' disabled title="The room is full: take something out first"' : '') + '>Put in room</button>';
+  }
   function paintMilestoneCards() {
     var worn = getWorn();
+    var inRoom = roomContents(lastMilestones), full = inRoom.length >= ROOM_MAX;
+    $('#mroom').textContent = 'In his room: ' + inRoom.length + ' of ' + ROOM_MAX + (full ? ' (full: take something out to make space)' : '');
+    $('#mroom').hidden = !earnedRoomIds(lastMilestones).length;
     $('#mbody').innerHTML = '<ul class="mgrid">' + lastMilestones.map(function (m) {
       var on = String(m.days) === String(worn);
       return '<li class="mcard ' + (m.earned ? 'earned' : 'locked') + (on ? ' worn' : '') + '">' +
+        '<span class="kind">' + (isOutfit(m.days) ? 'Outfit' : 'Room') + '</span>' +
         '<span class="art">' + itemIcon(m.days, 100) + '</span>' +
         '<span class="big">' + m.days + '<small>days</small></span>' +
-        '<strong>' + esc(outfitName(m.days, m.item)) + '</strong>' +
+        '<strong>' + esc(rewardName(m.days, m.item)) + '</strong>' +
         (m.earned
           ? '<span class="tag">Earned' + (m.date ? ' ' + esc(fmtDate(m.date)) : '') + '</span>' +
-            '<button class="btn btn-small' + (on ? '' : ' btn-ghost') + '" type="button" data-action="wear" data-days="' + m.days + '" aria-pressed="' + on + '">' + (on ? 'Wearing' : 'Wear') + '</button>'
+            (isOutfit(m.days)
+              ? '<button class="btn btn-small' + (on ? '' : ' btn-ghost') + '" type="button" data-action="wear" data-days="' + m.days + '" aria-pressed="' + on + '">' + (on ? 'Wearing' : 'Wear') + '</button>'
+              : roomButton(REWARDS[m.days].id, inRoom, full))
           : '<span class="tag lock">' + plural(m.left, 'day') + ' to go</span>') +
         '</li>';
     }).join('') + '</ul>';
+    paintRoom($('.milestone-stage'), lastMilestones);
   }
 
   async function viewMilestones() {
@@ -1082,14 +1251,16 @@
     main.innerHTML =
       '<div class="page">' +
         '<div><p class="eyebrow">Keep going</p><h1>Milestones</h1>' +
-        '<p class="muted" style="margin-top:6px">Keep a streak alive and your cat unlocks something new.</p></div>' +
-        '<section class="auth-stage milestone-stage" aria-label="Your cat">' +
-          '<span class="moon" aria-hidden="true"></span>' +
+        '<p class="muted" style="margin-top:6px">Keep a streak alive and your cat gets something new for his room. The longest streaks unlock outfits he can wear.</p></div>' +
+        '<section class="auth-stage milestone-stage indoor" aria-label="Your cat\'s room">' +
           '<p class="stage-chip" id="mchip" hidden></p>' +
           '<buddy-cat id="cat" mode="auto" height="320" start="0.5"></buddy-cat>' +
         '</section>' +
+        '<div class="room-bar"><p class="muted" id="mroom" hidden></p><div class="wall-row"><span class="muted">Wall</span>' + wallSwatches() + '</div></div>' +
         '<div id="mbody"><ul class="mgrid">' + [1, 2, 3, 4, 5, 6].map(function () { return '<li class="skeleton" style="height:220px"></li>'; }).join('') + '</ul></div>' +
       '</div>';
+    applyWall();
+    paintWallPicker();
     try {
       var results = await Promise.all([streaksApi('GET', '/milestones'), streaksApi('GET', '/streaks')]);
       if (stale(my)) return;
@@ -1116,10 +1287,24 @@
   // Every button has a data-action. This table says what each one does.
   var actions = {
     'auth-mode':     function (b) { setAuthMode(b.dataset.mode); },
-    'logout':        function () { saveItem('hb_token', null); saveItem('hb_user', null); saveItem('hb_outfit', null); location.hash = '#/login'; },
+    'logout':        function () { saveItem('hb_token', null); saveItem('hb_user', null); saveItem('hb_outfit', null); saveItem('hb_room', null); saveItem('hb_wall', null); location.hash = '#/login'; },
     'toast-action':  function () { var a = toastAction; $('#toast').hidden = true; if (a) a.run(); },
     'celebrate-close': function () { $('#celebrate').close(); },
-    'wear-now':      function (b) { setWorn(b.dataset.days); $('#celebrate').close(); dressCat(); toast('Your cat is wearing the ' + outfitName(+b.dataset.days) + ' outfit'); },
+    'wear-now':      function (b) { setWorn(b.dataset.days); $('#celebrate').close(); dressCat(); toast('Your cat is wearing the ' + rewardName(+b.dataset.days) + ' outfit'); },
+    'wall':          function (b) {
+      var first = !getWall();
+      setWall(b.dataset.wall);
+      document.querySelectorAll('[data-swatch]').forEach(function (el) { el.setAttribute('aria-pressed', String(el.dataset.swatch === b.dataset.wall)); });
+      if (first) paintWallPicker();                 // no celebration: the cat only celebrates logged habits
+    },
+    'room-toggle':   function (b) { toggleRoomItem(b.dataset.id, lastMilestones); paintMilestoneCards(); },
+    'room-new':      function (b) {
+      $('#celebrate').close();
+      var list = T && T.milestones ? toMilestones(T.milestones, bestStreak(T.streaks)) : lastMilestones;
+      if (roomContents(list).indexOf(b.dataset.id) !== -1) return;   // already there (shown automatically)
+      if (toggleRoomItem(b.dataset.id, list)) repaintRooms();
+      else toast('His room is full (' + ROOM_MAX + ' items). Take something out on the Milestones page to make space.', { action: { label: 'Milestones', run: function () { location.hash = '#/milestones'; } } });
+    },
     'wear':          function (b) { var on = String(getWorn()) === b.dataset.days; setWorn(on ? null : b.dataset.days); dressCat(); paintMilestoneCards(); },
     'reload':        function () { route(); },
     'skip':          function (b, e) { e.preventDefault(); main.focus(); },

@@ -88,17 +88,23 @@ paths:
               schema: { $ref: "#/components/schemas/User" }
         "401": { $ref: "#/components/responses/Unauthorized" }
     patch:
-      summary: Change the outfit the cat wears (the only field that can change)
+      summary: Change the outfit the cat wears, the items in his room and/or the room's wall colour (the only fields that can change)
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [outfit]
+              minProperties: 1
               additionalProperties: false
               properties:
                 outfit: { $ref: "#/components/schemas/Outfit" }
+                room:
+                  type: array
+                  maxItems: 5
+                  uniqueItems: true
+                  items: { $ref: "#/components/schemas/RoomItem" }
+                wall: { $ref: "#/components/schemas/Wall" }
       responses:
         "200":
           description: The updated user.
@@ -398,18 +404,38 @@ components:
 
     Outfit:
       type: string
-      description: Same names as the outfits Streaks hands out as milestone rewards. none = no outfit.
-      enum: [none, headphones, cool, chef, bookworm, wizard, aviator, sheriff, astronaut, lucky, ninja, cyberpunk, royal]
+      description: The outfits Streaks hands out for the 150, 200 and 365-day milestones (headphones = Chill, cool = Cool cat, royal = King). none = no outfit.
+      enum: [none, headphones, cool, royal]
+
+    RoomItem:
+      type: string
+      description: A room item Streaks hands out for the 3 to 100-day milestones.
+      enum: [yarn, bowl, scratcher, bed, plant, rug, window, tree, fishtank]
+
+    Wall:
+      type: string
+      description: The colour of the cat's room, picked on the first day.
+      enum: [cream, pink, sage]
 
     User:
       type: object
-      required: [id, first_name, last_name, username, outfit]
+      required: [id, first_name, last_name, username, outfit, room, wall]
       properties:
         id: { type: integer }
         first_name: { type: string }
         last_name: { type: string }
         username: { type: string }
         outfit: { $ref: "#/components/schemas/Outfit" }
+        room:
+          type: array
+          nullable: true
+          maxItems: 5
+          items: { $ref: "#/components/schemas/RoomItem" }
+          description: The items the user put in the cat's room. null = not chosen yet (the UI shows the newest earned items).
+        wall:
+          allOf: [{ $ref: "#/components/schemas/Wall" }]
+          nullable: true
+          description: null = not chosen yet (the UI asks once).
 
     LoginResponse:
       type: object

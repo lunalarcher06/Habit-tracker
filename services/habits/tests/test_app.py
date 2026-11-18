@@ -158,11 +158,11 @@ def test_health_is_503_when_the_database_is_unreachable(client, monkeypatch):
 def test_me_shows_outfit_and_can_change_it(client):
     h = sign_up_and_log_in(client)
     assert client.get("/me", headers=h).get_json()["outfit"] == "none"
-    r = client.patch("/me", json={"outfit": "chef"}, headers=h)
-    assert r.status_code == 200 and r.get_json()["outfit"] == "chef"
-    assert client.get("/me", headers=h).get_json()["outfit"] == "chef"
+    r = client.patch("/me", json={"outfit": "royal"}, headers=h)
+    assert r.status_code == 200 and r.get_json()["outfit"] == "royal"
+    assert client.get("/me", headers=h).get_json()["outfit"] == "royal"
     login = client.post("/auth/login", json={"username": "alice", "password": "password1"}).get_json()
-    assert login["user"]["outfit"] == "chef"
+    assert login["user"]["outfit"] == "royal"
 
 
 def test_me_rejects_unknown_outfit_and_other_fields(client):
@@ -170,11 +170,36 @@ def test_me_rejects_unknown_outfit_and_other_fields(client):
     assert client.patch("/me", json={"outfit": "spacesuit"}, headers=h).status_code == 422
     assert client.patch("/me", json={"username": "bob"}, headers=h).status_code == 422
     assert client.patch("/me", json={}, headers=h).status_code == 422
+    assert client.patch("/me", json={"room": ["bed", "sofa"]}, headers=h).status_code == 422
+    assert client.patch("/me", json={"room": ["bed", "bed"]}, headers=h).status_code == 422
+    assert client.patch("/me", json={"room": ["yarn", "bowl", "bed", "plant", "rug", "tree"]}, headers=h).status_code == 422
+    assert client.patch("/me", json={"room": "bed"}, headers=h).status_code == 422
+    assert client.patch("/me", json={"wall": "navy"}, headers=h).status_code == 422
     assert client.get("/me").status_code == 401
 
 
 def test_outfits_are_per_user(client):
     a = sign_up_and_log_in(client, "alice")
     b = sign_up_and_log_in(client, "bobby")
-    client.patch("/me", json={"outfit": "ninja"}, headers=a)
+    client.patch("/me", json={"outfit": "cool"}, headers=a)
     assert client.get("/me", headers=b).get_json()["outfit"] == "none"
+
+
+def test_room_starts_unchosen_and_can_be_set_and_emptied(client):
+    h = sign_up_and_log_in(client)
+    assert client.get("/me", headers=h).get_json()["room"] is None
+    r = client.patch("/me", json={"room": ["bed", "plant", "window"]}, headers=h)
+    assert r.status_code == 200 and r.get_json()["room"] == ["bed", "plant", "window"]
+    assert r.get_json()["outfit"] == "none"                      # the outfit is left alone
+    assert client.patch("/me", json={"room": []}, headers=h).get_json()["room"] == []
+    both = client.patch("/me", json={"outfit": "cool", "room": ["yarn"]}, headers=h).get_json()
+    assert (both["outfit"], both["room"]) == ("cool", ["yarn"])
+
+
+def test_wall_starts_unchosen_and_can_be_picked(client):
+    h = sign_up_and_log_in(client)
+    assert client.get("/me", headers=h).get_json()["wall"] is None
+    r = client.patch("/me", json={"wall": "sage"}, headers=h)
+    assert r.status_code == 200 and r.get_json()["wall"] == "sage"
+    login = client.post("/auth/login", json={"username": "alice", "password": "password1"}).get_json()
+    assert login["user"]["wall"] == "sage"

@@ -127,7 +127,7 @@ class TestMilestones:
         ms = milestones_for_habit(db, hid)
         assert len(ms) == 2
         assert [m["streak_length"] for m in ms] == [3, 7]
-        assert [m["item_unlocked"] for m in ms] == ["headphones", "cool"]
+        assert [m["item_unlocked"] for m in ms] == ["yarn", "bowl"]
 
     def test_milestones_for_user(self, db):
         h1 = 1
