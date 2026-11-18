@@ -1,0 +1,14 @@
+# Live data on Azure before migrations habits 003/004 and streaks 002 (2026-11-17T10:52Z)
+GET https://lalarcher-ieu2024-habits.purplegrass-28f7b10d.spaincentral.azurecontainerapps.io/health
+{"db":"ok","status":"ok","version":"9f2a2d0e6b29ee36d9b943098a33c7057bc2d81a"}
+
+GET https://lalarcher-ieu2024-habits.purplegrass-28f7b10d.spaincentral.azurecontainerapps.io/history (user democat)
+{"habits":[{"checkins":[{"count":1,"date":"2026-11-11"},{"count":1,"date":"2026-11-12"},{"count":1,"date":"2026-11-13"},{"count":1,"date":"2026-11-14"},{"count":1,"date":"2026-11-15"},{"count":1,"date":"2026-11-16"},{"count":1,"date":"2026-11-17"}],"created_at":"2026-11-17","frequency":"daily","habit_id":3,"name":"Drink water","target_count_per_day":1,"weekdays_mask":null}]}
+
+
+GET https://lalarcher-ieu2024-streaks.purplegrass-28f7b10d.spaincentral.azurecontainerapps.io/health
+{"db":"ok","status":"ok","version":"9f2a2d0e6b29ee36d9b943098a33c7057bc2d81a"}
+
+GET https://lalarcher-ieu2024-streaks.purplegrass-28f7b10d.spaincentral.azurecontainerapps.io/milestones (user democat)
+{"milestones":[{"achieved_on":"2026-11-17","habit_id":3,"item_unlocked":"cool","streak_length":7},{"achieved_on":"2026-11-17","habit_id":3,"item_unlocked":"headphones","streak_length":3}]}
+
