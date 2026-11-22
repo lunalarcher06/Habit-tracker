@@ -414,7 +414,7 @@ components:
 
     Wall:
       type: string
-      description: The colour of the cat's room, picked on the first day.
+      description: The colour of the cat's room, picked the first time the user opens Milestones.
       enum: [cream, pink, sage]
 
     User:

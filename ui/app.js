@@ -203,7 +203,7 @@
   // ----- what each milestone unlocks -----
   // 3 to 100 days: something for the cat's room, shown behind him on the dashboard and the Milestones page
   // (picture: cat/room/<id>.webp, cut out of one sticker sheet; the emoji only shows if a picture is missing).
-  // 150, 200 and 365 days: an outfit he can wear (pictures: cat/stickers/<id>/, and cat/outfits/<id>/ to animate it).
+  // 150, 200 and 365 days: an outfit he can wear (pictures: cat/stickers/<id>/).
   // The ids are the ones Streaks stores in item_unlocked.
   var REWARDS = {
     3:   { id: 'yarn',       name: 'Yarn ball',       kind: 'room', emoji: '\ud83e\uddf6' },

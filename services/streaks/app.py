@@ -144,7 +144,7 @@ def streaks_one(habit_id):
         raise HabitNotFound()
     return jsonify(streak_for(habits[0]))
 
-#milsetones
+#milestones
 @app.get("/milestones")
 @token_required
 def milestones():
