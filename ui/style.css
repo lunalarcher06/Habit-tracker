@@ -379,7 +379,6 @@ img, buddy-cat{image-rendering:auto}
 /* the cat's stage inside the Today card: flat at the bottom edge, the card rounds it */
 .hero-stage { margin-top: 20px; min-height: 280px; display: flex; align-items: flex-end; border-radius: 0; box-shadow: none; }
 .hero-stage buddy-cat { width: 100%; }
-.hero-stage .moon { top: 18px; width: 52px; height: 52px; box-shadow: inset 14px 5px 0 0 #f5efc6; }
 .milestone-stage buddy-cat { width: 100%; }
 .stage-chip { position: absolute; top: 18px; left: 20px; z-index: 2; margin: 0; padding: 7px 14px; border-radius: 999px; background: rgba(0, 0, 0, .3); color: var(--text); font-size: 14px; font-weight: 600; }
 @media (min-width: 900px) { .milestone-stage { min-height: 380px; } .mgrid { grid-template-columns: repeat(6, 1fr); } }
@@ -448,7 +447,7 @@ img, buddy-cat{image-rendering:auto}
 }
 .auth-stage.indoor .moon { display: none; }
 
-/* wall colour swatches: on the first day inside the room, and on the Milestones page */
+/* wall colour swatches: inside the room the first time Milestones opens, and under the room on Milestones */
 .swatches { display: flex; flex-wrap: wrap; gap: 8px; }
 .swatch { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px 6px 6px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--card); color: var(--text); font-weight: 600; font-size: 14px; cursor: pointer; }
 .swatch .chip { width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(180deg, var(--wall-bottom) 0 62%, var(--floor) 62%); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .15); }

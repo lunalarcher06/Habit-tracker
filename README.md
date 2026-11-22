@@ -2,7 +2,7 @@
 
 Habit Buddy is a habit tracker for laptops. You can create habits, tick them off each day, and see your streaks and completion rates. The first time you open the Milestones page you pick a colour for your cat's room (Cream, Pink or Sage), and streak milestones fill it (a yarn ball at 3 days, then a food bowl, scratching post, bed, plant, rug, window, cat tree and fish tank at 7, 14, 21, 30, 45, 60, 90 and 100 days; up to 5 at a time, and you choose which on the Milestones page), and the three longest unlock outfits he can wear: Chill at 150, Cool cat at 200 and King at 365 days.
 
-Assignment 2 splits the app into two Flask services that talk over HTTP, each with its own SQL Server database. The services, migrations, Dockerfiles and `docker compose` work locally; the static UI, CI and the second migration are done; and every push to `main` deploys to Azure (see [Deploy to Azure](#deploy-to-azure)).
+Assignment 2 splits the app into two Flask services that talk over HTTP, each with its own SQL Server database. The services, migrations, Dockerfiles and `docker compose` work locally; the static UI, CI and the second migration are done; and every push to `main` deploys to Azure ([Deploy to Azure](#deploy-to-azure)).
 
 ## Services
 
@@ -11,7 +11,7 @@ Assignment 2 splits the app into two Flask services that talk over HTTP, each wi
 | Habits (`services/habits`) | 8001 | users, habit groups, habits, check-ins; issues the login token (JWT) | `openapi.yaml` |
 | Streaks (`services/streaks`) | 8002 | milestones; computes streaks | `openapi.yaml` |
 
-How they work together (see ADR 6 and 7):
+How they work together (ADR 6 and 7):
 - The user logs in at Habits and gets a JWT. Both services check it with the same `JWT_SECRET`.
 - Streaks gets the check-ins by calling Habits' `GET /history` with the user's own token and a 3-second timeout.
 - Habits never calls Streaks. Streaks awards milestones when it computes a streak.
@@ -68,10 +68,11 @@ DATABASE_URL="mssql://habits_user:<password>@localhost:1433/habits" JWT_SECRET=<
 ```
 habit-tracker/
 ├── docker-compose.yml        # SQL Server, db-init, habits, streaks, ui
-├── .env.example              # the variables compose needs (copy to .env)
+├── .env.example              # the variables compose needs 
 ├── system.yaml               # every service, its settings, its calls and its Azure resources
+├── system.schema.json        # the course's schema for system.yaml (checked in CI)
 ├── db/
-│   ├── init.sql              # databases and logins (idempotent)
+│   ├── init.sql              # databases and logins 
 │   └── init_test.sql         # extra databases for the test suites
 ├── tests/integration/        # the test across the seam (both services running)
 ├── services/
@@ -127,7 +128,8 @@ CI runs it as its own `integration` job, and the images are only built after it 
 `.github/workflows/ci.yml` runs on every push and pull request:
 - **`test`** (one job per service): installs the service, lints it with `ruff`, validates its `openapi.yaml`, starts a throwaway SQL Server container with random masked passwords, and runs the tests. The job fails if coverage is below 70%.
 - **`integration`**: starts SQL Server and runs the integration test above.
-- **`images`** (after `test` and `integration` pass): builds each service's Docker image. Only on `main` it also pushes the image to `ghcr.io/<owner>/habit-buddy-<service>:<commit sha>`, using the built-in `GITHUB_TOKEN`.
+- **`system`**: validates `system.yaml` against the course's `system.schema.json` with `check-jsonschema`.
+- **`images`** (after `test`, `integration` and `system` pass): builds each service's Docker image. Only on `main` it also pushes the image to `ghcr.io/<owner>/habit-buddy-<service>:<commit sha>`, using the built-in `GITHUB_TOKEN`.
 
 To run a published image: `docker run --rm ghcr.io/<owner>/habit-buddy-habits:<sha>`. It starts and then fails to connect to a database, because there is no `DATABASE_URL`.
 
@@ -143,7 +145,7 @@ Everything runs in my Azure for Students subscription, in the resource group `rg
 bash infra/azure-setup.sh
 ```
 
-It creates the storage static website for the UI, the SQL server with one serverless database and one user per service, the Container Apps environment with both apps (min 0, max 1 replica), and the managed identity the pipeline signs in as. It asks for the passwords and stores them only as Container App secrets. At the end it prints the values to add in GitHub under *Settings > Secrets and variables > Actions*:
+It creates the storage static website for the UI, the SQL server with one serverless database and one user per service, the Container Apps environment with both apps, and the managed identity the pipeline signs in as. It asks for the passwords and stores them only as Container App secrets. At the end it prints the values to add in GitHub under *Settings > Secrets and variables > Actions*:
 
 - secrets `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`
 - variables `PREFIX`, `RESOURCE_GROUP`, `UI_STORAGE`
@@ -155,7 +157,3 @@ After the first push to `main`, make the two packages on ghcr.io public (package
 ## Migration evidence
 
 `docs/evidence/migrations-before.txt` and `migrations-after.txt` show the live data on Azure before and after migrations Habits 003–006 and Streaks 002: every check-in is kept, the milestone rows are kept with their rewards renamed, and the startup logs show each migration applied once.
-
-## Still to do
-
-- Validate `system.yaml` against `system.schema.json` in CI (waiting for the schema file).

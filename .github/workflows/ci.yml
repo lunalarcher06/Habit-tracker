@@ -1,4 +1,4 @@
-# CI on every push and pull request: lint, validate the OpenAPI files, test each service
+# CI on every push and pull request: lint, validate the OpenAPI files and system.yaml, test each service
 # against a real SQL Server with a 70% coverage gate, run one integration test across the
 # seam, and build both Docker images.
 # Images are pushed to ghcr.io (tagged with the commit SHA) only from main.
@@ -111,8 +111,21 @@ jobs:
           export STREAKS_TEST_DATABASE_URL="mssql://streaks_user:${APP_PW}@localhost:1433/streaks_test"
           python -m pytest tests/integration -v
 
+  # system.yaml must match the course's schema (system.schema.json, copied from Blackboard).
+  system:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate system.yaml against system.schema.json
+        run: |
+          pip install check-jsonschema==0.29.4
+          check-jsonschema --schemafile system.schema.json system.yaml
+
   images:
-    needs: [test, integration]
+    needs: [test, integration, system]
     runs-on: ubuntu-latest
     permissions:
       contents: read

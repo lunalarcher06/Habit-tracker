@@ -1,5 +1,5 @@
 """Habits service: users, groups, habits, check-ins. 
-Creates and returns a JWT token after login, and follows the API rules written in openapi.yml"""
+Creates and returns a JWT token after login, and follows the API rules written in openapi.yaml"""
 import logging
 import os
 import time
